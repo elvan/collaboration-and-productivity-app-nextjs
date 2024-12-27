@@ -3,7 +3,11 @@ import { Activity, Project, User } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import ActivityEmail from "@/components/emails/activity-notification"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+if (!process.env.RESEND_API_KEY) {
+  console.warn("Missing RESEND_API_KEY environment variable")
+}
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 interface EmailData {
   title: string
@@ -14,6 +18,11 @@ interface EmailData {
 }
 
 export async function sendActivityEmail(data: EmailData) {
+  if (!resend) {
+    console.error("Email service not initialized: Missing API key")
+    return
+  }
+
   try {
     await resend.emails.send({
       from: "notifications@yourdomain.com",

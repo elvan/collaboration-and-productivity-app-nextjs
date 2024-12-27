@@ -195,14 +195,42 @@ export async function getUserPreferenceForTemplate(
   return preference
 }
 
-export async function shouldSendNotification(
-  userId: string,
-  channel: string,
-  type: string,
-  timezone: string
-) {
-  const preference = await getPreference(userId, channel, type)
+export interface NotificationCheckParams {
+  userId: string
+  templateType?: string
+  channel: string
+  type?: string
+  timezone?: string
+}
 
+export async function shouldSendNotification({
+  userId,
+  templateType,
+  channel,
+  type,
+  timezone = "UTC"
+}: NotificationCheckParams): Promise<boolean> {
+  // If templateType is provided, use that flow
+  if (templateType) {
+    const preference = await getUserPreferenceForTemplate(userId, templateType)
+    if (!preference?.enabled) return false
+
+    switch (channel) {
+      case "email":
+        return !!preference.email
+      case "push":
+        return !!preference.push
+      case "app":
+        return true
+      default:
+        return false
+    }
+  }
+
+  // Legacy flow using type and channel
+  if (!type) return false
+  
+  const preference = await getPreference(userId, channel, type)
   if (!preference || !preference.enabled) {
     return false
   }
@@ -241,27 +269,6 @@ export async function shouldSendNotification(
 
     return currentTime >= startTime && currentTime <= endTime
   })
-}
-
-export async function shouldSendNotification(
-  userId: string,
-  templateType: string,
-  channel: "app" | "email" | "push"
-): Promise<boolean> {
-  const preference = await getUserPreferenceForTemplate(userId, templateType)
-
-  if (!preference.enabled) return false
-
-  switch (channel) {
-    case "app":
-      return true // Always send in-app notifications if enabled
-    case "email":
-      return preference.email
-    case "push":
-      return preference.push
-    default:
-      return false
-  }
 }
 
 export async function createDigest(

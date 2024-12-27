@@ -2,17 +2,30 @@ import webPush from "web-push"
 import { prisma } from "./prisma"
 import { shouldSendNotification } from "./notification-preferences"
 
-// Initialize web-push with VAPID keys
-const vapidKeys = {
-  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  privateKey: process.env.VAPID_PRIVATE_KEY!,
+if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+  console.warn("Missing VAPID keys in environment variables")
 }
 
-webPush.setVapidDetails(
-  `mailto:${process.env.SUPPORT_EMAIL!}`,
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-)
+if (!process.env.SUPPORT_EMAIL) {
+  console.warn("Missing SUPPORT_EMAIL in environment variables")
+}
+
+const vapidKeys = {
+  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+  privateKey: process.env.VAPID_PRIVATE_KEY || "",
+}
+
+try {
+  if (process.env.SUPPORT_EMAIL && vapidKeys.publicKey && vapidKeys.privateKey) {
+    webPush.setVapidDetails(
+      `mailto:${process.env.SUPPORT_EMAIL}`,
+      vapidKeys.publicKey,
+      vapidKeys.privateKey
+    )
+  }
+} catch (error) {
+  console.error("Failed to initialize web push:", error)
+}
 
 export interface PushSubscription {
   endpoint: string
@@ -64,6 +77,11 @@ export async function sendPushNotification(
 
   const notifications = subscriptions.map(async (subscription) => {
     try {
+      if (!process.env.SUPPORT_EMAIL || !vapidKeys.publicKey || !vapidKeys.privateKey) {
+        console.error("Web push not properly configured: Missing required environment variables")
+        return
+      }
+
       await webPush.sendNotification(
         {
           endpoint: subscription.endpoint,
@@ -112,3 +130,5 @@ export async function requestPushPermission(): Promise<PushSubscription | null> 
     return null
   }
 }
+
+export { vapidKeys }

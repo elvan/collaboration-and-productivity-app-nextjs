@@ -218,6 +218,33 @@ const templates: Record<string, NotificationTemplate> = {
   },
 }
 
+export interface GetTemplateOptions {
+  id?: string
+  type?: string
+}
+
+export async function getTemplate(options: GetTemplateOptions) {
+  // If id is provided, fetch from database
+  if (options.id) {
+    return prisma.notificationTemplate.findUnique({
+      where: { id: options.id },
+      include: {
+        versions: {
+          orderBy: { version: "desc" },
+          take: 1,
+        },
+      },
+    })
+  }
+
+  // If type is provided, get predefined template
+  if (options.type) {
+    return templates[options.type]
+  }
+
+  return undefined
+}
+
 export async function createTemplate({
   name,
   description,
@@ -335,18 +362,6 @@ export async function updateTemplate({
   return template
 }
 
-export async function getTemplate(id: string) {
-  return prisma.notificationTemplate.findUnique({
-    where: { id },
-    include: {
-      versions: {
-        orderBy: { version: "desc" },
-        take: 1,
-      },
-    },
-  })
-}
-
 export async function getTemplates(type?: string) {
   return prisma.notificationTemplate.findMany({
     where: {
@@ -361,7 +376,7 @@ export async function renderTemplate(
   templateId: string,
   data: Record<string, any>
 ) {
-  const template = await getTemplate(templateId)
+  const template = await getTemplate({ id: templateId })
   if (!template) {
     throw new Error("Template not found")
   }
@@ -411,10 +426,6 @@ function validateTemplate(
   }
 }
 
-export function getTemplate(type: string): NotificationTemplate | undefined {
-  return templates[type]
-}
-
 export function formatNotification(
   type: string,
   data: NotificationTemplateData
@@ -427,7 +438,7 @@ export function formatNotification(
   groupId?: string
   metadata?: Record<string, any>
 } {
-  const template = getTemplate(type)
+  const template = getTemplate({ type }) as NotificationTemplate
   if (!template) {
     throw new Error(`Unknown notification template: ${type}`)
   }
