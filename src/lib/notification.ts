@@ -2,6 +2,7 @@ import { Activity, Project, User } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { sendActivityNotificationEmail } from "@/lib/email"
 import { trackNotification } from "@/lib/analytics"
+import { sendPushNotification } from "@/lib/web-push"
 import {
   NotificationTemplateData,
   formatNotification,
@@ -73,6 +74,20 @@ export async function createNotificationFromTemplate(
       notificationType: formattedNotification.type,
       category: formattedNotification.category,
       groupId: formattedNotification.groupId,
+    },
+  })
+
+  // Send push notification if enabled
+  await sendPushNotification(userId, {
+    id: notification.id,
+    type: formattedNotification.type,
+    title: formattedNotification.title,
+    message: formattedNotification.message,
+    url: `/notifications?id=${notification.id}`,
+    metadata: {
+      ...formattedNotification.metadata,
+      category: formattedNotification.category,
+      priority: formattedNotification.priority,
     },
   })
 
@@ -151,6 +166,20 @@ export async function createNotification({
       notificationType: type,
       category,
       groupId: effectiveGroupId,
+    },
+  })
+
+  // Send push notification if enabled
+  await sendPushNotification(userId, {
+    id: notification.id,
+    type,
+    title,
+    message,
+    url: `/notifications?id=${notification.id}`,
+    metadata: {
+      ...metadata,
+      category,
+      priority,
     },
   })
 
