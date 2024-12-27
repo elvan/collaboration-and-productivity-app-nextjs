@@ -6,49 +6,52 @@ import { ActivityFeed } from "./activity-feed"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Icons } from "@/components/icons"
-
-interface Task {
-  id: string
-  title: string
-  description?: string
-  status: string
-  priority: string
-  startDate?: Date
-  endDate?: Date
-  progress: number
-  assignee?: {
-    id: string
-    name: string
-    image?: string | null
-  }
-}
+import { useTaskDetails } from "@/hooks/use-task-details"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface TaskDetailsProps {
-  task: Task
-  comments: any[]
-  activities: any[]
-  activityStats?: any
-  onAddComment: (content: string, parentId?: string) => Promise<void>
-  onEditComment: (id: string, content: string) => Promise<void>
-  onDeleteComment: (id: string) => Promise<void>
-  onAddReaction: (id: string, emoji: string) => Promise<void>
-  onRemoveReaction: (id: string, emoji: string) => Promise<void>
+  taskId: string
 }
 
-export function TaskDetails({
-  task,
-  comments,
-  activities,
-  activityStats,
-  onAddComment,
-  onEditComment,
-  onDeleteComment,
-  onAddReaction,
-  onRemoveReaction,
-}: TaskDetailsProps) {
+export function TaskDetails({ taskId }: TaskDetailsProps) {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState("comments")
   const [activityFilter, setActivityFilter] = useState("all")
+
+  const {
+    task,
+    comments,
+    activities,
+    activityStats,
+    isLoading,
+    createComment,
+    updateComment,
+    deleteComment,
+    addReaction,
+    removeReaction,
+  } = useTaskDetails(taskId)
+
+  if (isLoading) {
+    return (
+      <Card className="p-6">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-[200px]" />
+          <Skeleton className="h-[400px] w-full" />
+        </div>
+      </Card>
+    )
+  }
+
+  if (!task) {
+    return (
+      <Card className="p-6">
+        <div className="flex flex-col items-center justify-center space-y-2">
+          <Icons.alertCircle className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Task not found</p>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <Card className="p-6">
@@ -72,19 +75,19 @@ export function TaskDetails({
 
         <TabsContent value="comments" className="space-y-4">
           <CommentList
-            comments={comments}
-            taskId={task.id}
-            onAddComment={onAddComment}
-            onEditComment={onEditComment}
-            onDeleteComment={onDeleteComment}
-            onAddReaction={onAddReaction}
-            onRemoveReaction={onRemoveReaction}
+            comments={comments || []}
+            taskId={taskId}
+            onAddComment={createComment}
+            onEditComment={updateComment}
+            onDeleteComment={deleteComment}
+            onAddReaction={addReaction}
+            onRemoveReaction={removeReaction}
           />
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-4">
           <ActivityFeed
-            activities={activities}
+            activities={activities || []}
             stats={activityStats}
             filter={activityFilter}
             onFilterChange={setActivityFilter}
