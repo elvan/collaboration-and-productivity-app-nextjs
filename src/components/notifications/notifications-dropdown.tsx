@@ -19,6 +19,7 @@ import { toast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 import { Bell } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
+import { soundManager } from "@/lib/sounds"
 
 interface ExtendedNotification extends Notification {
   activity?: {
@@ -38,6 +39,7 @@ export function NotificationsDropdown() {
   const [unreadCount, setUnreadCount] = React.useState<number>(0)
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
+  const previousCount = React.useRef(0)
 
   async function fetchNotifications() {
     try {
@@ -93,6 +95,14 @@ export function NotificationsDropdown() {
 
     return () => clearInterval(interval)
   }, [isOpen])
+
+  React.useEffect(() => {
+    if (notifications.length > previousCount.current) {
+      // Play notification sound for new notifications
+      soundManager.play()
+    }
+    previousCount.current = notifications.length
+  }, [notifications.length])
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
