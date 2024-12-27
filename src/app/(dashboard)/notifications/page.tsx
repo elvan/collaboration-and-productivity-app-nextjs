@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { getFilteredNotifications, NotificationFilters } from "@/lib/notification"
 import { useDebounce } from "@/lib/hooks"
+import { ExportDialog } from "@/components/notifications/export-dialog"
 
 const categories = [
   { label: "Project", value: "project" },
@@ -150,6 +151,7 @@ export default function NotificationsPage() {
                 <SelectItem value="unread">Unread</SelectItem>
               </SelectContent>
             </Select>
+            <ExportDialog conditions={filters} />
           </div>
         </div>
 
