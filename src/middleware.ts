@@ -37,11 +37,15 @@ export default withAuth(
 // Protect all routes except public ones
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/settings/:path*",
-    "/projects/:path*",
-    "/notifications/:path*",
-    "/login",
-    "/register",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (auth API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - login
+     * - register
+     */
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|login|register).*)",
   ],
 };
