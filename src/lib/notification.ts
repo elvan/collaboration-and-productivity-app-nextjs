@@ -4,6 +4,7 @@ import { sendActivityNotificationEmail } from "@/lib/email"
 import { trackNotification } from "@/lib/analytics"
 import { sendPushNotification } from "@/lib/web-push"
 import { trackDelivery } from "@/lib/notification-delivery"
+import { checkRateLimit, trackNotificationSent } from "@/lib/notification-rate-limit"
 import {
   NotificationTemplateData,
   formatNotification,
@@ -51,6 +52,21 @@ export async function createNotificationFromTemplate(
 ) {
   const formattedNotification = formatNotification(templateType, data)
 
+  // Check rate limits for app notifications
+  const appRateLimit = await checkRateLimit({
+    userId,
+    channel: "app",
+    templateType,
+    category: formattedNotification.category,
+  })
+
+  if (!appRateLimit.allowed) {
+    console.log(
+      `App notification rate limited for user ${userId}: ${appRateLimit.reason}`
+    )
+    return null
+  }
+
   const notification = await prisma.notification.create({
     data: {
       type: formattedNotification.type,
@@ -65,7 +81,15 @@ export async function createNotificationFromTemplate(
     },
   })
 
-  // Track in-app notification
+  // Track app notification
+  await trackNotificationSent({
+    userId,
+    channel: "app",
+    templateType,
+    category: formattedNotification.category,
+  })
+
+  // Track in-app notification delivery
   await trackDelivery(notification.id, userId, "app", "sent", undefined, {
     type: formattedNotification.type,
     category: formattedNotification.category,
@@ -85,31 +109,69 @@ export async function createNotificationFromTemplate(
     },
   })
 
-  // Send and track push notification
-  try {
-    await sendPushNotification(userId, {
-      id: notification.id,
-      type: formattedNotification.type,
-      title: formattedNotification.title,
-      message: formattedNotification.message,
-      url: `/notifications?id=${notification.id}`,
-      metadata: {
-        ...formattedNotification.metadata,
+  // Check and send push notification
+  const pushRateLimit = await checkRateLimit({
+    userId,
+    channel: "push",
+    templateType,
+    category: formattedNotification.category,
+  })
+
+  if (pushRateLimit.allowed) {
+    try {
+      await sendPushNotification(userId, {
+        id: notification.id,
+        type: formattedNotification.type,
+        title: formattedNotification.title,
+        message: formattedNotification.message,
+        url: `/notifications?id=${notification.id}`,
+        metadata: {
+          ...formattedNotification.metadata,
+          category: formattedNotification.category,
+          priority: formattedNotification.priority,
+        },
+      })
+      await trackDelivery(notification.id, userId, "push", "sent")
+      await trackNotificationSent({
+        userId,
+        channel: "push",
+        templateType,
         category: formattedNotification.category,
-        priority: formattedNotification.priority,
-      },
-    })
-    await trackDelivery(notification.id, userId, "push", "sent")
-  } catch (error: any) {
-    await trackDelivery(notification.id, userId, "push", "failed", error.message)
+      })
+    } catch (error: any) {
+      await trackDelivery(notification.id, userId, "push", "failed", error.message)
+    }
+  } else {
+    console.log(
+      `Push notification rate limited for user ${userId}: ${pushRateLimit.reason}`
+    )
   }
 
-  // Send and track email notification
-  try {
-    await sendActivityNotificationEmail(notification as any)
-    await trackDelivery(notification.id, userId, "email", "sent")
-  } catch (error: any) {
-    await trackDelivery(notification.id, userId, "email", "failed", error.message)
+  // Check and send email notification
+  const emailRateLimit = await checkRateLimit({
+    userId,
+    channel: "email",
+    templateType,
+    category: formattedNotification.category,
+  })
+
+  if (emailRateLimit.allowed) {
+    try {
+      await sendActivityNotificationEmail(notification as any)
+      await trackDelivery(notification.id, userId, "email", "sent")
+      await trackNotificationSent({
+        userId,
+        channel: "email",
+        templateType,
+        category: formattedNotification.category,
+      })
+    } catch (error: any) {
+      await trackDelivery(notification.id, userId, "email", "failed", error.message)
+    }
+  } else {
+    console.log(
+      `Email notification rate limited for user ${userId}: ${emailRateLimit.reason}`
+    )
   }
 
   return notification

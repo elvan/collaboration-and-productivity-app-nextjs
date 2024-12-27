@@ -26,6 +26,7 @@ import {
   updateNotificationPreference,
 } from "@/lib/notification-preferences"
 import { getTemplate } from "@/lib/notification-templates"
+import { getRateLimits, updateRateLimit } from "@/lib/notification-rate-limit"
 
 const soundOptions = [
   { label: "Default", value: "default" },
@@ -40,15 +41,94 @@ const digestFrequencies = [
   { label: "Weekly Digest", value: "weekly" },
 ]
 
+interface RateLimitSettingsProps {
+  channel: string
+  limits: any
+  onUpdate: (values: any) => Promise<void>
+}
+
+function RateLimitSettings({ channel, limits, onUpdate }: RateLimitSettingsProps) {
+  const [values, setValues] = React.useState({
+    maxPerMinute: limits?.maxPerMinute || 2,
+    maxPerHour: limits?.maxPerHour || 30,
+    maxPerDay: limits?.maxPerDay || 100,
+  })
+
+  const handleChange = async (field: string, value: number) => {
+    const newValues = { ...values, [field]: value }
+    setValues(newValues)
+    await onUpdate(newValues)
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Per Minute</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={10}
+            value={values.maxPerMinute}
+            onChange={(e) =>
+              handleChange("maxPerMinute", parseInt(e.target.value))
+            }
+            className="w-20"
+          />
+          <span className="text-sm text-muted-foreground">
+            notifications per minute
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <Label>Per Hour</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={values.maxPerHour}
+            onChange={(e) => handleChange("maxPerHour", parseInt(e.target.value))}
+            className="w-20"
+          />
+          <span className="text-sm text-muted-foreground">
+            notifications per hour
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <Label>Per Day</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            value={values.maxPerDay}
+            onChange={(e) => handleChange("maxPerDay", parseInt(e.target.value))}
+            className="w-20"
+          />
+          <span className="text-sm text-muted-foreground">
+            notifications per day
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function NotificationPreferencesPage() {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [preferences, setPreferences] = React.useState<any[]>([])
+  const [rateLimits, setRateLimits] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
     if (session?.user?.id) {
       loadPreferences()
+      loadRateLimits()
     }
   }, [session?.user?.id])
 
@@ -61,6 +141,20 @@ export default function NotificationPreferencesPage() {
       toast({
         title: "Error",
         description: "Failed to load notification preferences",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const loadRateLimits = async () => {
+    try {
+      const limits = await getRateLimits(session!.user!.id)
+      setRateLimits(limits)
+    } catch (error) {
+      console.error("Failed to load rate limits:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load rate limits",
         variant: "destructive",
       })
     } finally {
@@ -95,6 +189,28 @@ export default function NotificationPreferencesPage() {
       toast({
         title: "Error",
         description: "Failed to update notification preference",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleRateLimitChange = async (channel: string, values: any) => {
+    try {
+      await updateRateLimit(session!.user!.id, channel, values)
+      setRateLimits((prev) =>
+        prev.map((limit) =>
+          limit.channel === channel ? { ...limit, ...values } : limit
+        )
+      )
+      toast({
+        title: "Success",
+        description: "Rate limit updated",
+      })
+    } catch (error) {
+      console.error("Failed to update rate limit:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update rate limit",
         variant: "destructive",
       })
     }
@@ -291,6 +407,47 @@ export default function NotificationPreferencesPage() {
             </CardContent>
           </Card>
         ))}
+
+        {/* Rate Limits */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold">Rate Limits</h2>
+            <p className="text-muted-foreground mt-1">
+              Control how frequently you receive notifications
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {["app", "email", "push"].map((channel) => {
+              const limits = rateLimits.find(
+                (limit) =>
+                  limit.channel === channel &&
+                  !limit.templateType &&
+                  !limit.category
+              )
+
+              return (
+                <Card key={channel}>
+                  <CardHeader>
+                    <CardTitle className="capitalize">{channel}</CardTitle>
+                    <CardDescription>
+                      Set rate limits for {channel} notifications
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <RateLimitSettings
+                      channel={channel}
+                      limits={limits}
+                      onUpdate={async (values) => {
+                        await handleRateLimitChange(channel, values)
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </div>
   )
