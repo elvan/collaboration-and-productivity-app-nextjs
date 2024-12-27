@@ -103,7 +103,7 @@ export function BulkActionDialog({
   const startPolling = (id: string) => {
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(\`/api/notifications/bulk?actionId=\${id}\`)
+        const res = await fetch(`/api/notifications/bulk?actionId=${id}`)
         if (!res.ok) {
           throw new Error("Failed to get bulk action status")
         }

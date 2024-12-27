@@ -170,16 +170,16 @@ export async function getNotificationTrends(userId: string) {
   })
 
   // Get most active times
-  const hourlyDistribution = await prisma.$queryRaw\`
+  const hourlyDistribution = await prisma.$queryRaw`
     SELECT EXTRACT(HOUR FROM "createdAt") as hour,
            COUNT(*) as count
     FROM "NotificationAnalytics"
-    WHERE "userId" = \${userId}
-      AND "createdAt" >= \${startDate}
+    WHERE "userId" = ${userId}
+      AND "createdAt" >= ${startDate}
       AND event = 'sent'
     GROUP BY hour
     ORDER BY hour
-  \`
+  `
 
   return {
     eventCounts,

@@ -35,7 +35,7 @@ export async function createBulkAction({
 
   // Start processing in the background
   processBulkAction(action.id).catch((error) => {
-    console.error(\`Failed to process bulk action \${action.id}:\`, error)
+    console.error(`Failed to process bulk action ${action.id}:`, error)
   })
 
   return action
@@ -119,7 +119,7 @@ async function processBulkAction(actionId: string) {
       } catch (error) {
         failed += notifications.length
         console.error(
-          \`Failed to process batch for action \${actionId}:\`,
+          `Failed to process batch for action ${actionId}:`,
           error
         )
       }

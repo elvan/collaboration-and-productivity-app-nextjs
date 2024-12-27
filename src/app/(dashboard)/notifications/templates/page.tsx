@@ -47,7 +47,7 @@ export default function NotificationTemplates() {
     try {
       setLoading(true)
       const url = type
-        ? \`/api/notifications/templates?type=\${type}\`
+        ? `/api/notifications/templates?type=${type}`
         : "/api/notifications/templates"
       const res = await fetch(url)
       if (!res.ok) {

@@ -86,7 +86,7 @@ export async function exportNotifications(
     if (includeMetadata && notification.metadata) {
       Object.entries(notification.metadata as Record<string, any>).forEach(
         ([key, value]) => {
-          data[\`metadata_\${key}\`] = JSON.stringify(value)
+          data[`metadata_${key}`] = JSON.stringify(value)
         }
       )
     }
@@ -115,5 +115,5 @@ export function generateExportFilename(
   prefix = "notifications"
 ) {
   const timestamp = format(new Date(), "yyyy-MM-dd-HHmmss")
-  return \`\${prefix}-\${timestamp}.\${format}\`
+  return `${prefix}-${timestamp}.${format}`
 }

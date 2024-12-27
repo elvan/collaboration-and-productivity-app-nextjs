@@ -469,3 +469,44 @@ model NotificationTemplateVersion {
   @@index([templateId])
   @@index([createdById])
 }
+
+model ABTest {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  templateId    String
+  variants      Json     // Array of template variants
+  startDate     DateTime
+  endDate       DateTime?
+  status        String   // draft, active, completed, stopped
+  winningVariant String?
+  metrics       Json?    // Test metrics and results
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String
+  
+  template      NotificationTemplate @relation(fields: [templateId], references: [id])
+  createdBy     User                @relation(fields: [createdById], references: [id])
+
+  @@index([templateId])
+  @@index([createdById])
+  @@index([status])
+}
+
+model ABTestEvent {
+  id            String   @id @default(cuid())
+  testId        String
+  variantId     String
+  userId        String
+  event         String   // sent, delivered, read, clicked
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([testId])
+  @@index([variantId])
+  @@index([userId])
+  @@index([event])
+  @@index([createdAt])
+}

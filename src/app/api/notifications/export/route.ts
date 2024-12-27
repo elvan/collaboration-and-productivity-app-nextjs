@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     )
     headers.set(
       "Content-Disposition",
-      \`attachment; filename="\${filename}"\`
+      `attachment; filename="${filename}"`
     )
 
     return new NextResponse(data, {
