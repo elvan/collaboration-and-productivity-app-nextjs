@@ -88,26 +88,80 @@ model Project {
   id          String    @id @default(cuid())
   name        String
   description String?
-  status      String    @default("active")
-  priority    String    @default("medium")
-  startDate   DateTime?
-  endDate     DateTime?
+  ownerId     String
+  workspaceId String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  ownerId     String
-  owner       User      @relation("ProjectOwner", fields: [ownerId], references: [id])
-  members     User[]    @relation("ProjectMembers")
   tasks       Task[]
   invitations ProjectInvitation[]
   activities  Activity[]
   customFields CustomField[]
-  webhooks      Webhook[]
+  webhooks    Webhook[]
   emailTemplates EmailTemplate[]
+  priorityRules PriorityRule[]
+  workflowAutomations WorkflowAutomation[]
+
+  // Relations
+  owner       User     @relation(fields: [ownerId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  members     User[]    @relation("ProjectMembers")
+  priorityRules PriorityRule[]
+  workflowAutomations WorkflowAutomation[]
 
   @@index([workspaceId])
   @@index([ownerId])
+}
+
+model PriorityRule {
+  id          String   @id @default(cuid())
+  projectId   String
+  conditions  Json     // Serialized rule conditions
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model WorkflowAutomation {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  projectId   String
+  trigger     Json     // Serialized trigger conditions
+  actions     Json     // Serialized actions
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  type        String   // task_created, task_updated, comment_added, etc.
+  projectId   String
+  taskId      String?
+  userId      String?
+  metadata    Json?    // Additional activity data
+  createdAt   DateTime @default(now())
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task        Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model Task {
@@ -175,20 +229,6 @@ model ProjectInvitation {
   @@index([projectId])
   @@index([invitedById])
   @@index([invitedUserId])
-}
-
-model Activity {
-  id          String   @id @default(cuid())
-  type        String   // member_added, member_removed, task_created, task_completed, etc.
-  data        Json     // Additional data specific to the activity type
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  createdAt   DateTime @default(now())
-
-  @@index([projectId])
-  @@index([userId])
 }
 
 model Notification {
@@ -419,8 +459,9 @@ model NotificationAnalytics {
   event         String   // sent, delivered, read, clicked, dismissed
   channel       String   // app, email, push
   metadata      Json?    // Additional event data
-  createdAt     DateTime @default(now())
-  
+  userId        String?  // User who triggered the event
+  timestamp     DateTime @default(now())
+
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   notification  Notification? @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   batch         NotificationBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
@@ -430,7 +471,7 @@ model NotificationAnalytics {
   @@index([batchId])
   @@index([event])
   @@index([channel])
-  @@index([createdAt])
+  @@index([timestamp])
 }
 
 model NotificationStats {

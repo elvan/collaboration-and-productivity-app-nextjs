@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -72,6 +72,8 @@ import { TaskComments } from "./task-comments"
 import { TaskAttachments } from "./task-attachments"
 import { TaskRelationships } from "./task-relationships"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { ActivityLog } from "@/components/activity-log"
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -111,6 +113,7 @@ interface TaskDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onUpdate: (taskId: string, data: any) => Promise<void>
+  projectId: string
   currentUserId: string
 }
 
@@ -128,11 +131,21 @@ const STATUS_OPTIONS = [
   { value: "done", label: "Done" },
 ]
 
+interface CustomField {
+  id: string
+  name: string
+  type: string
+  required: boolean
+  description?: string
+  options?: { value: string; label: string; color?: string }[]
+}
+
 export function TaskDialog({
   task,
   open,
   onOpenChange,
   onUpdate,
+  projectId,
   currentUserId,
 }: TaskDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -141,10 +154,59 @@ export function TaskDialog({
   const [dependencies, setDependencies] = useState([])
   const [dependents, setDependents] = useState([])
   const [availableTasks, setAvailableTasks] = useState([])
-  const [activeTab, setActiveTab] = useState("details")
+  const [activeTab, setActiveTab] = useState<string>("details")
   const [comments, setComments] = useState([])
   const [attachments, setAttachments] = useState([])
   const [relationships, setRelationships] = useState([])
+  const [customFields, setCustomFields] = useState<CustomField[]>([])
+  const [customFieldValues, setCustomFieldValues] = useState<any>({})
+
+  useEffect(() => {
+    if (open && projectId) {
+      loadCustomFields()
+      if (task) {
+        loadCustomFieldValues()
+      }
+    }
+  }, [open, projectId, task])
+
+  async function loadCustomFields() {
+    try {
+      const fields = await getProjectCustomFields(projectId)
+      setCustomFields(fields)
+    } catch (error) {
+      console.error("Failed to load custom fields:", error)
+    }
+  }
+
+  async function loadCustomFieldValues() {
+    if (!task) return
+    try {
+      const values = await getTaskCustomFieldValues(task.id)
+      const valueMap = values.reduce(
+        (acc, v) => ({
+          ...acc,
+          [v.customField.id]: v.value,
+        }),
+        {}
+      )
+      setCustomFieldValues(valueMap)
+    } catch (error) {
+      console.error("Failed to load custom field values:", error)
+    }
+  }
+
+  async function handleCustomFieldChange(fieldId: string, value: any) {
+    try {
+      await setCustomFieldValue(task!.id, fieldId, value)
+      setCustomFieldValues((prev: any) => ({
+        ...prev,
+        [fieldId]: value,
+      }))
+    } catch (error) {
+      console.error("Failed to update custom field value:", error)
+    }
+  }
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
@@ -236,24 +298,27 @@ export function TaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <DialogHeader>
-              <DialogTitle>Edit Task</DialogTitle>
-              <DialogDescription>
-                Make changes to the task here. Click save when you&apos;re done.
-              </DialogDescription>
-            </DialogHeader>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
-                <TabsTrigger value="relationships">Relationships</TabsTrigger>
-                <TabsTrigger value="comments">Comments</TabsTrigger>
-                <TabsTrigger value="attachments">Attachments</TabsTrigger>
-              </TabsList>
-              <TabsContent value="details" className="space-y-4">
+      <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle>
+            {task ? "Edit Task" : "Create Task"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
+            <TabsTrigger value="relationships">Relationships</TabsTrigger>
+            <TabsTrigger value="custom-fields">Custom Fields</TabsTrigger>
+            <TabsTrigger value="comments">Comments</TabsTrigger>
+            <TabsTrigger value="attachments">Attachments</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="details">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)}>
                 <div className="grid gap-4 py-4">
                   <FormField
                     control={form.control}
@@ -428,87 +493,280 @@ export function TaskDialog({
                     </div>
                   </div>
                 </div>
-              </TabsContent>
-              <TabsContent value="dependencies" className="space-y-4">
-                <TaskDependencies
-                  task={task}
-                  dependencies={dependencies}
-                  dependents={dependents}
-                  availableTasks={availableTasks}
-                  onAddDependency={handleAddDependency}
-                  onRemoveDependency={handleRemoveDependency}
-                />
-              </TabsContent>
-              <TabsContent value="relationships" className="space-y-4">
-                <TaskRelationships
-                  taskId={task.id}
-                  projectId={task.projectId}
-                  relationships={relationships}
-                  availableTasks={availableTasks}
-                  onCreateRelationship={createTaskRelationship}
-                  onDeleteRelationship={deleteTaskRelationship}
-                />
-              </TabsContent>
-              <TabsContent value="comments" className="space-y-4">
-                <TaskComments
-                  taskId={task.id}
-                  comments={comments}
-                  onAddComment={handleAddComment}
-                  onDeleteComment={handleDeleteComment}
-                />
-              </TabsContent>
-              <TabsContent value="attachments" className="space-y-4">
-                <TaskAttachments
-                  taskId={task.id}
-                  attachments={attachments}
-                  onAddAttachment={handleAddAttachment}
-                  onDeleteAttachment={handleDeleteAttachment}
-                />
-              </TabsContent>
-            </Tabs>
-            <DialogFooter>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" type="button">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete
-                      the task and all its data.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={async () => {
-                        try {
-                          setIsLoading(true)
-                          // await onDelete(task.id)
-                          onOpenChange(false)
-                        } catch (error) {
-                          console.error("Failed to delete task:", error)
-                        } finally {
-                          setIsLoading(false)
-                        }
-                      }}
-                      className="bg-red-500 hover:bg-red-600"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save changes"}
+              </form>
+            </Form>
+          </TabsContent>
+
+          <TabsContent value="dependencies">
+            <TaskDependencies
+              task={task}
+              dependencies={dependencies}
+              dependents={dependents}
+              availableTasks={availableTasks}
+              onAddDependency={handleAddDependency}
+              onRemoveDependency={handleRemoveDependency}
+            />
+          </TabsContent>
+
+          <TabsContent value="relationships">
+            <TaskRelationships
+              task={task}
+              projectId={projectId}
+              onUpdate={onUpdate}
+            />
+          </TabsContent>
+
+          <TabsContent value="custom-fields">
+            <ScrollArea className="h-[60vh]">
+              <div className="space-y-4 p-4">
+                {customFields.map((field) => (
+                  <FormItem key={field.id}>
+                    <FormLabel>
+                      {field.name}
+                      {field.required && (
+                        <span className="text-destructive"> *</span>
+                      )}
+                    </FormLabel>
+                    {field.description && (
+                      <FormDescription>{field.description}</FormDescription>
+                    )}
+                    <FormControl>
+                      {field.type === "text" && (
+                        <Input
+                          value={customFieldValues[field.id] || ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(field.id, e.target.value)
+                          }
+                        />
+                      )}
+                      {field.type === "number" && (
+                        <Input
+                          type="number"
+                          value={customFieldValues[field.id] || ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(
+                              field.id,
+                              e.target.value ? parseFloat(e.target.value) : null
+                            )
+                          }
+                        />
+                      )}
+                      {field.type === "date" && (
+                        <Input
+                          type="datetime-local"
+                          value={customFieldValues[field.id] || ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(field.id, e.target.value)
+                          }
+                        />
+                      )}
+                      {field.type === "select" && (
+                        <Select
+                          value={customFieldValues[field.id] || ""}
+                          onValueChange={(value) =>
+                            handleCustomFieldChange(field.id, value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {field.options?.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {option.color && (
+                                    <div
+                                      className="w-3 h-3 rounded-full"
+                                      style={{
+                                        backgroundColor: option.color,
+                                      }}
+                                    />
+                                  )}
+                                  {option.label}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {field.type === "multiselect" && (
+                        <div className="flex flex-wrap gap-2">
+                          {field.options?.map((option) => {
+                            const selected = (
+                              customFieldValues[field.id] || []
+                            ).includes(option.value)
+                            return (
+                              <Button
+                                key={option.value}
+                                type="button"
+                                variant={selected ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => {
+                                  const currentValues =
+                                    customFieldValues[field.id] || []
+                                  const newValues = selected
+                                    ? currentValues.filter(
+                                        (v: string) => v !== option.value
+                                      )
+                                    : [...currentValues, option.value]
+                                  handleCustomFieldChange(field.id, newValues)
+                                }}
+                              >
+                                {option.color && (
+                                  <div
+                                    className="w-2 h-2 rounded-full mr-2"
+                                    style={{
+                                      backgroundColor: option.color,
+                                    }}
+                                  />
+                                )}
+                                {option.label}
+                              </Button>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {field.type === "user" && (
+                        <Select
+                          value={customFieldValues[field.id] || ""}
+                          onValueChange={(value) =>
+                            handleCustomFieldChange(field.id, value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select user" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {project?.members.map((member) => (
+                              <SelectItem
+                                key={member.id}
+                                value={member.id}
+                              >
+                                {member.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {field.type === "url" && (
+                        <Input
+                          type="url"
+                          value={customFieldValues[field.id] || ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(field.id, e.target.value)
+                          }
+                        />
+                      )}
+                      {field.type === "email" && (
+                        <Input
+                          type="email"
+                          value={customFieldValues[field.id] || ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(field.id, e.target.value)
+                          }
+                        />
+                      )}
+                      {field.type === "phone" && (
+                        <Input
+                          type="tel"
+                          value={customFieldValues[field.id] || ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(field.id, e.target.value)
+                          }
+                        />
+                      )}
+                      {field.type === "currency" && (
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5">$</span>
+                          <Input
+                            type="number"
+                            className="pl-7"
+                            value={customFieldValues[field.id] || ""}
+                            onChange={(e) =>
+                              handleCustomFieldChange(
+                                field.id,
+                                e.target.value
+                                  ? parseFloat(e.target.value)
+                                  : null
+                              )
+                            }
+                          />
+                        </div>
+                      )}
+                    </FormControl>
+                  </FormItem>
+                ))}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="comments">
+            <TaskComments
+              taskId={task?.id}
+              comments={comments}
+              onAddComment={handleAddComment}
+              onDeleteComment={handleDeleteComment}
+            />
+          </TabsContent>
+
+          <TabsContent value="attachments">
+            <TaskAttachments
+              taskId={task?.id}
+              attachments={attachments}
+              onAddAttachment={handleAddAttachment}
+              onDeleteAttachment={handleDeleteAttachment}
+            />
+          </TabsContent>
+
+          <TabsContent value="activity">
+            <ActivityLog taskId={task?.id} />
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" type="button">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
               </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete
+                  the task and all its data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    try {
+                      setIsLoading(true)
+                      // await onDelete(task.id)
+                      onOpenChange(false)
+                    } catch (error) {
+                      console.error("Failed to delete task:", error)
+                    } finally {
+                      setIsLoading(false)
+                    }
+                  }}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "Saving..." : "Save changes"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
