@@ -486,7 +486,7 @@ model NotificationAnalytics {
   userId        String
   notificationId String?
   batchId       String?
-  event         String   // sent, delivered, read, clicked, dismissed
+  event         String   // sent, delivered, read, clicked, converted
   channel       String   // app, email, push
   metadata      Json?    // Additional event data
   userId        String?  // User who triggered the event
@@ -1123,4 +1123,82 @@ model WorkspaceAnalytics {
   workspace         Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])
+}
+
+model TaskTemplate {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  typeId      String?
+  statusId    String?
+  priority    String?
+  estimatedTime Int?
+  customFields Json?
+  checklists  Json?
+  subtasks    Json?
+  automations Json?
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId])
+}
+
+model TimeEntry {
+  id          String    @id @default(cuid())
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?      // Duration in seconds
+  description String?
+  billable    Boolean   @default(false)
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([startTime])
+}
+
+model AutomationRule {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  enabled     Boolean   @default(true)
+  trigger     String
+  conditions  Json
+  actions     Json
+  metadata    Json?
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  runs        AutomationRun[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId])
+  @@index([trigger])
+  @@index([enabled])
+}
+
+model AutomationRun {
+  id          String    @id @default(cuid())
+  rule        AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  ruleId      String
+  trigger     String
+  context     Json
+  success     Boolean
+  error       Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([ruleId])
+  @@index([trigger])
+  @@index([success])
+  @@index([createdAt])
 }
