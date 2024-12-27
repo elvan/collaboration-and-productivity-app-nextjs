@@ -21,8 +21,7 @@ async function getProjectStats(userId: string) {
       OR: [
         { ownerId: userId },
         { members: { some: { id: userId } } }
-      ],
-      status: "active"
+      ]
     }
   })
 
@@ -73,8 +72,7 @@ async function getRecentProjects(userId: string) {
       OR: [
         { ownerId: userId },
         { members: { some: { id: userId } } }
-      ],
-      status: "active"
+      ]
     },
     orderBy: {
       updatedAt: "desc"
