@@ -3,14 +3,10 @@
 import { getServerSession } from "next-auth"
 import { DashboardHeader } from "@/components/header"
 import { DashboardShell } from "@/components/shell"
-import { TeamList } from "@/components/teams/team-list"
-import { TeamMembers } from "@/components/teams/team-members"
-import { Card } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import { deleteTeam, addTeamMember, updateTeamMember, removeTeamMember } from "./actions"
+import { TeamPageClient } from "@/components/teams/team-page-client"
 
 async function getTeamsData(userId: string) {
   const teams = await prisma.team.findMany({
@@ -89,35 +85,12 @@ export default async function TeamPage() {
         heading="Team"
         text="Manage your team and collaborators"
       />
-      <Tabs defaultValue="members" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="members">Members</TabsTrigger>
-          <TabsTrigger value="teams">Teams</TabsTrigger>
-        </TabsList>
-        <TabsContent value="members" className="space-y-4">
-          <Card className="p-6">
-            {defaultTeam && (
-              <TeamMembers
-                team={defaultTeam}
-                onAddMember={(userId, role) => addTeamMember(defaultTeam.id, userId, role)}
-                onUpdateMember={(userId, role) => updateTeamMember(defaultTeam.id, userId, role)}
-                onRemoveMember={(userId) => removeTeamMember(defaultTeam.id, userId)}
-                currentUserId={session.user.id}
-                availableUsers={availableUsers}
-              />
-            )}
-          </Card>
-        </TabsContent>
-        <TabsContent value="teams" className="space-y-4">
-          <Card className="p-6">
-            <TeamList
-              teams={teams}
-              onDelete={deleteTeam}
-              currentUserId={session.user.id}
-            />
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <TeamPageClient
+        teams={teams}
+        defaultTeam={defaultTeam}
+        currentUserId={session.user.id}
+        availableUsers={availableUsers}
+      />
     </DashboardShell>
   )
 }

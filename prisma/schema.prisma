@@ -25,6 +25,10 @@ model User {
   // Workspace relations
   workspaces WorkspaceMember[]
 
+  // Team relations
+  teams        TeamMember[]     @relation("TeamMembers")
+  createdTeams Team[]           @relation("TeamCreator")
+
   // Task relations
   assignedTasks Task[] @relation("TaskAssignee")
   createdTasks  Task[] @relation("TaskCreator")
@@ -1322,4 +1326,36 @@ model WorkspaceAnalytics {
   workspace Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+  
+  // Relations
+  createdBy User     @relation("TeamCreator", fields: [createdById], references: [id])
+  members   TeamMember[]
+
+  @@index([createdById])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      String   @default("member") // admin, member
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation("TeamMembers", fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
 }
