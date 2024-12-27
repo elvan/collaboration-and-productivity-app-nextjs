@@ -67,7 +67,6 @@ export async function createTeam(data: TeamCreateInput) {
     },
   })
 
-  // Log activity
   await logActivity({
     type: "team.created",
     action: "created",
@@ -84,82 +83,6 @@ export async function createTeam(data: TeamCreateInput) {
   return team
 }
 
-export async function updateTeam(
-  id: string,
-  data: TeamUpdateInput,
-  userId: string
-) {
-  const team = await prisma.team.update({
-    where: { id },
-    data: {
-      name: data.name,
-      description: data.description,
-      lastUpdatedById: userId,
-    },
-    include: {
-      createdBy: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-        },
-      },
-      lastUpdatedBy: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-        },
-      },
-      members: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-            },
-          },
-        },
-      },
-    },
-  })
-
-  if (data.members) {
-    // Update team members
-    await prisma.teamMember.deleteMany({
-      where: { teamId: id },
-    })
-
-    await prisma.teamMember.createMany({
-      data: data.members.map((member) => ({
-        teamId: id,
-        userId: member.userId,
-        role: member.role,
-      })),
-    })
-  }
-
-  // Log activity
-  await logActivity({
-    type: "team.updated",
-    action: "updated",
-    entityType: "team",
-    entityId: team.id,
-    metadata: {
-      teamName: team.name,
-      changes: data,
-    },
-    userId,
-    workspaceId: team.workspaceId,
-  })
-
-  return team
-}
-
 export async function deleteTeam(id: string, userId: string) {
   const team = await prisma.team.delete({
     where: { id },
@@ -168,7 +91,6 @@ export async function deleteTeam(id: string, userId: string) {
     },
   })
 
-  // Log activity
   await logActivity({
     type: "team.deleted",
     action: "deleted",
@@ -197,7 +119,49 @@ export async function getTeam(id: string) {
           image: true,
         },
       },
-      lastUpdatedBy: {
+      members: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+            },
+          },
+        },
+      },
+    },
+  })
+}
+
+export async function getTeams(options?: {
+  search?: string
+  userId?: string
+  role?: "admin" | "member"
+}) {
+  const where: any = {}
+
+  if (options?.search) {
+    where.OR = [
+      { name: { contains: options.search, mode: 'insensitive' } },
+      { description: { contains: options.search, mode: 'insensitive' } },
+    ]
+  }
+
+  if (options?.userId) {
+    where.members = {
+      some: {
+        userId: options.userId,
+        ...(options?.role && { role: options.role }),
+      },
+    }
+  }
+
+  const teams = await prisma.team.findMany({
+    where,
+    include: {
+      createdBy: {
         select: {
           id: true,
           name: true,
@@ -218,72 +182,10 @@ export async function getTeam(id: string) {
         },
       },
     },
+    orderBy: { createdAt: "desc" },
   })
-}
 
-export async function getTeams(workspaceId: string, options?: {
-  search?: string
-  userId?: string
-  role?: "admin" | "member"
-}) {
-  const where = {
-    workspaceId,
-    ...(options?.search && {
-      OR: [
-        { name: { contains: options.search, mode: 'insensitive' } },
-        { description: { contains: options.search, mode: 'insensitive' } },
-      ],
-    }),
-    ...(options?.userId && {
-      members: {
-        some: {
-          userId: options.userId,
-          ...(options?.role && { role: options.role }),
-        },
-      },
-    }),
-  }
-
-  const [total, teams] = await Promise.all([
-    prisma.team.count({ where }),
-    prisma.team.findMany({
-      where,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            tasks: true,
-            documents: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-  ])
-
-  return {
-    total,
-    teams,
-  }
+  return teams
 }
 
 export async function addTeamMember(
@@ -310,7 +212,6 @@ export async function addTeamMember(
     },
   })
 
-  // Log activity
   await logActivity({
     type: "team.member_added",
     action: "added",
@@ -355,7 +256,6 @@ export async function updateTeamMember(
     },
   })
 
-  // Log activity
   await logActivity({
     type: "team.member_updated",
     action: "updated",
@@ -398,7 +298,6 @@ export async function removeTeamMember(
     },
   })
 
-  // Log activity
   await logActivity({
     type: "team.member_removed",
     action: "removed",

@@ -4,13 +4,33 @@ import { TeamList } from "@/components/teams/team-list"
 import { TeamMembers } from "@/components/teams/team-members"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { deleteTeam, addTeamMember, updateTeamMember, removeTeamMember } from "@/app/(dashboard)/dashboard/team/actions"
+import { addTeamMember, updateTeamMember, removeTeamMember, deleteTeam } from "@/lib/teams"
+
+interface Team {
+  id: string
+  name: string
+  description?: string | null
+  members: Array<{
+    user: {
+      id: string
+      name: string
+      email: string
+      image?: string | null
+    }
+    role: "admin" | "member"
+  }>
+}
 
 interface TeamPageClientProps {
-  teams: any[]
-  defaultTeam: any
+  teams: Team[]
+  defaultTeam?: Team
   currentUserId: string
-  availableUsers: any[]
+  availableUsers: Array<{
+    id: string
+    name: string
+    email: string
+    image?: string | null
+  }>
 }
 
 export function TeamPageClient({
@@ -30,9 +50,15 @@ export function TeamPageClient({
           {defaultTeam && (
             <TeamMembers
               team={defaultTeam}
-              onAddMember={(userId, role) => addTeamMember(defaultTeam.id, userId, role)}
-              onUpdateMember={(userId, role) => updateTeamMember(defaultTeam.id, userId, role)}
-              onRemoveMember={(userId) => removeTeamMember(defaultTeam.id, userId)}
+              onAddMember={async (userId, role) => {
+                await addTeamMember(defaultTeam.id, { userId, role }, currentUserId)
+              }}
+              onUpdateMember={async (userId, role) => {
+                await updateTeamMember(defaultTeam.id, userId, role, currentUserId)
+              }}
+              onRemoveMember={async (userId) => {
+                await removeTeamMember(defaultTeam.id, userId, currentUserId)
+              }}
               currentUserId={currentUserId}
               availableUsers={availableUsers}
             />
@@ -43,7 +69,9 @@ export function TeamPageClient({
         <Card className="p-6">
           <TeamList
             teams={teams}
-            onDelete={deleteTeam}
+            onDelete={async (id) => {
+              await deleteTeam(id, currentUserId)
+            }}
             currentUserId={currentUserId}
           />
         </Card>

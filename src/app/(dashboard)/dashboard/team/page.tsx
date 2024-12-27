@@ -1,5 +1,3 @@
-"use client"
-
 import { getServerSession } from "next-auth"
 import { DashboardHeader } from "@/components/header"
 import { DashboardShell } from "@/components/shell"
@@ -7,45 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { TeamPageClient } from "@/components/teams/team-page-client"
-
-async function getTeamsData(userId: string) {
-  const teams = await prisma.team.findMany({
-    where: {
-      members: {
-        some: {
-          userId
-        }
-      }
-    },
-    include: {
-      members: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true
-            }
-          }
-        }
-      },
-      createdBy: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true
-        }
-      }
-    },
-    orderBy: {
-      createdAt: 'desc'
-    }
-  })
-
-  return teams
-}
+import { getTeams } from "@/lib/teams"
 
 async function getAvailableUsers(userId: string) {
   const users = await prisma.user.findMany({
@@ -73,7 +33,7 @@ export default async function TeamPage() {
   }
 
   const [teams, availableUsers] = await Promise.all([
-    getTeamsData(session.user.id),
+    getTeams({ userId: session.user.id }),
     getAvailableUsers(session.user.id)
   ])
 
