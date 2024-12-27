@@ -2,6 +2,10 @@ import { Activity, Project, User } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { sendActivityNotificationEmail } from "@/lib/email"
 import { trackNotification } from "@/lib/analytics"
+import {
+  NotificationTemplateData,
+  formatNotification,
+} from "./notification-templates"
 
 interface NotificationData {
   type: string
@@ -26,6 +30,44 @@ interface NotificationGroup {
     read: boolean
     metadata?: Record<string, any>
   }>
+}
+
+export async function createNotificationFromTemplate(
+  templateType: string,
+  data: NotificationTemplateData,
+  userId: string,
+  activityId?: string
+) {
+  const formattedNotification = formatNotification(templateType, data)
+
+  const notification = await prisma.notification.create({
+    data: {
+      type: formattedNotification.type,
+      category: formattedNotification.category,
+      priority: formattedNotification.priority,
+      title: formattedNotification.title,
+      message: formattedNotification.message,
+      groupId: formattedNotification.groupId,
+      metadata: formattedNotification.metadata,
+      userId,
+      activityId,
+    },
+  })
+
+  // Track notification sent
+  await trackNotification({
+    userId,
+    type: "notification",
+    action: "sent",
+    metadata: {
+      notificationId: notification.id,
+      notificationType: formattedNotification.type,
+      category: formattedNotification.category,
+      groupId: formattedNotification.groupId,
+    },
+  })
+
+  return notification
 }
 
 export async function createNotification({
@@ -106,6 +148,118 @@ export async function createNotification({
   return notification
 }
 
+export async function createActivityNotification(
+  activity: Activity & {
+    user: Pick<User, "name" | "email">
+    project: Pick<Project, "name">
+  }
+) {
+  const data = activity.data as any
+
+  // Map activity type to notification template type
+  let templateType: string
+  let templateData: NotificationTemplateData
+
+  switch (activity.type) {
+    case "member_added":
+      templateType = "member.joined"
+      templateData = {
+        actor: activity.user,
+        project: activity.project,
+        action: "joined",
+        subject: {
+          id: data.memberId,
+          name: data.memberName,
+          email: data.memberEmail,
+        },
+        role: data.role,
+      }
+      break
+
+    case "task_created":
+      templateType = "task.created"
+      templateData = {
+        actor: activity.user,
+        project: activity.project,
+        action: "created",
+        task: {
+          id: data.taskId,
+          title: data.taskTitle,
+        },
+      }
+      break
+
+    case "task_completed":
+      templateType = "task.completed"
+      templateData = {
+        actor: activity.user,
+        project: activity.project,
+        action: "completed",
+        task: {
+          id: data.taskId,
+          title: data.taskTitle,
+        },
+      }
+      break
+
+    case "task_assigned":
+      templateType = "task.assigned"
+      templateData = {
+        actor: activity.user,
+        project: activity.project,
+        action: "assigned",
+        task: {
+          id: data.taskId,
+          title: data.taskTitle,
+        },
+        assignee: {
+          id: data.assigneeId,
+          name: data.assigneeName,
+          email: data.assigneeEmail,
+        },
+      }
+      break
+
+    default:
+      return // Skip unknown activity types
+  }
+
+  // Get project members to notify
+  const projectMembers = await prisma.project.findUnique({
+    where: { id: activity.projectId },
+    select: {
+      members: {
+        select: { id: true },
+      },
+      owner: {
+        select: { id: true },
+      },
+    },
+  })
+
+  if (!projectMembers) return
+
+  // Create notifications for all project members except the activity creator
+  const memberIds = [
+    ...projectMembers.members.map((m) => m.id),
+    projectMembers.owner.id,
+  ]
+
+  for (const memberId of memberIds) {
+    if (memberId === activity.userId) continue
+
+    await createNotificationFromTemplate(
+      templateType,
+      templateData,
+      memberId,
+      activity.id
+    )
+  }
+
+  // Send email notifications
+  await sendActivityNotificationEmail(activity)
+}
+
 export async function getGroupedNotifications(userId: string) {
   const notifications = await prisma.notification.findMany({
     where: {
@@ -149,95 +303,6 @@ export async function getGroupedNotifications(userId: string) {
     groups: Object.values(groups),
     ungrouped,
   }
-}
-
-export async function createActivityNotification(
-  activity: Activity & {
-    user: Pick<User, "name" | "email">
-    project: Pick<Project, "name">
-  }
-) {
-  const data = activity.data as any
-  let title = ""
-  let message = ""
-
-  switch (activity.type) {
-    case "member_added":
-      title = "New Project Member"
-      message = `${activity.user.name || activity.user.email} added ${
-        data.memberName
-      } to ${activity.project.name}`
-      break
-    case "member_removed":
-      title = "Member Removed"
-      message = `${activity.user.name || activity.user.email} removed ${
-        data.memberName
-      } from ${activity.project.name}`
-      break
-    case "task_created":
-      title = "New Task Created"
-      message = `${activity.user.name || activity.user.email} created task "${
-        data.taskTitle
-      }" in ${activity.project.name}`
-      break
-    case "task_completed":
-      title = "Task Completed"
-      message = `${activity.user.name || activity.user.email} completed task "${
-        data.taskTitle
-      }" in ${activity.project.name}`
-      break
-    case "task_assigned":
-      title = "Task Assigned"
-      message = `${
-        activity.user.name || activity.user.email
-      } assigned task "${data.taskTitle}" to ${data.assigneeName} in ${
-        activity.project.name
-      }`
-      break
-    default:
-      title = "Project Update"
-      message = `${
-        activity.user.name || activity.user.email
-      } made changes to ${activity.project.name}`
-  }
-
-  // Get project members to notify
-  const projectMembers = await prisma.project.findUnique({
-    where: { id: activity.projectId },
-    select: {
-      members: {
-        select: { id: true },
-      },
-      owner: {
-        select: { id: true },
-      },
-    },
-  })
-
-  if (!projectMembers) return
-
-  // Create notifications for all project members except the activity creator
-  const memberIds = [
-    ...projectMembers.members.map((m) => m.id),
-    projectMembers.owner.id,
-  ]
-
-  for (const memberId of memberIds) {
-    if (memberId === activity.userId) continue
-
-    await createNotification({
-      type: "activity",
-      category: "project",
-      title,
-      message,
-      userId: memberId,
-      activityId: activity.id,
-      metadata: { projectId: activity.projectId },
-    })
-  }
-
-  // Send email notifications
-  await sendActivityNotificationEmail(activity)
 }
 
 export async function markNotificationAsRead(notificationId: string) {
