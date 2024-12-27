@@ -1,10 +1,5 @@
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { format } from "date-fns"
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
 import {
   Card,
   CardContent,
@@ -12,9 +7,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { TaskDialog } from "./task-dialog"
-import { Plus } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import {
+  Clock,
+  ListChecks,
+  Link as LinkIcon,
+  MoreHorizontal,
+  Tag,
+} from "lucide-react"
 
 interface Task {
   id: string
@@ -23,12 +26,19 @@ interface Task {
   status: string
   priority: string
   dueDate?: Date | null
+  labels?: string[]
+  customFields?: Record<string, any>
   assignee?: {
     id: string
     name: string
     email: string
     image?: string | null
   } | null
+  _count?: {
+    subtasks: number
+    dependencies: number
+    dependents: number
+  }
 }
 
 interface Column {
@@ -39,21 +49,17 @@ interface Column {
 
 interface TaskBoardProps {
   tasks: Task[]
-  projectId: string
-  projectMembers: Array<{ id: string; name: string }>
-  onCreate: (data: any) => Promise<void>
-  onUpdate: (taskId: string, data: any) => Promise<void>
+  onTaskMove: (taskId: string, sourceStatus: string, targetStatus: string) => Promise<void>
+  onTaskUpdate: (taskId: string, data: any) => Promise<void>
+  currentUserId: string
 }
 
 export function TaskBoard({
   tasks,
-  projectId,
-  projectMembers,
-  onCreate,
-  onUpdate,
+  onTaskMove,
+  onTaskUpdate,
+  currentUserId,
 }: TaskBoardProps) {
-  const router = useRouter()
-  const [isCreating, setIsCreating] = useState(false)
   const [columns, setColumns] = useState<Column[]>([
     {
       id: "todo",
@@ -66,83 +72,92 @@ export function TaskBoard({
       tasks: tasks.filter((task) => task.status === "in_progress"),
     },
     {
+      id: "review",
+      title: "Review",
+      tasks: tasks.filter((task) => task.status === "review"),
+    },
+    {
       id: "done",
       title: "Done",
       tasks: tasks.filter((task) => task.status === "done"),
     },
   ])
 
-  const priorityColors: Record<string, string> = {
-    low: "bg-slate-500",
-    medium: "bg-yellow-500",
-    high: "bg-orange-500",
-    urgent: "bg-red-500",
-  }
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
-  async function handleCreate(data: any) {
-    try {
-      await onCreate(data)
-      setIsCreating(false)
-      router.refresh()
-    } catch (error) {
-      console.error("Failed to create task:", error)
-    }
-  }
+  const handleDragEnd = async (result: any) => {
+    if (!result.destination) return
 
-  async function handleDragEnd(result: any) {
-    const { destination, source, draggableId } = result
+    const sourceColumn = columns.find(
+      (column) => column.id === result.source.droppableId
+    )
+    const destColumn = columns.find(
+      (column) => column.id === result.destination.droppableId
+    )
 
-    if (!destination) return
+    if (!sourceColumn || !destColumn) return
 
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return
-    }
+    const taskToMove = sourceColumn.tasks[result.source.index]
 
-    const task = tasks.find((t) => t.id === draggableId)
-    if (!task) return
-
-    // Update task status if moved to a different column
-    if (destination.droppableId !== source.droppableId) {
-      try {
-        await onUpdate(task.id, {
-          status: destination.droppableId,
-        })
-        router.refresh()
-      } catch (error) {
-        console.error("Failed to update task status:", error)
+    // Update columns state
+    const newColumns = columns.map((column) => {
+      if (column.id === sourceColumn.id) {
+        return {
+          ...column,
+          tasks: column.tasks.filter((_, index) => index !== result.source.index),
+        }
       }
+      if (column.id === destColumn.id) {
+        const newTasks = Array.from(column.tasks)
+        newTasks.splice(result.destination.index, 0, {
+          ...taskToMove,
+          status: destColumn.id,
+        })
+        return {
+          ...column,
+          tasks: newTasks,
+        }
+      }
+      return column
+    })
+
+    setColumns(newColumns)
+
+    // Call API to update task status
+    await onTaskMove(taskToMove.id, sourceColumn.id, destColumn.id)
+  }
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case "urgent":
+        return "bg-red-500"
+      case "high":
+        return "bg-orange-500"
+      case "medium":
+        return "bg-yellow-500"
+      case "low":
+        return "bg-green-500"
+      default:
+        return "bg-blue-500"
     }
   }
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Tasks</h2>
-        <Button onClick={() => setIsCreating(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Task
-        </Button>
-      </div>
-
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-4 gap-4">
           {columns.map((column) => (
-            <div key={column.id} className="flex flex-col">
-              <div className="mb-3 flex items-center justify-between">
+            <div key={column.id} className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
                 <h3 className="font-semibold">{column.title}</h3>
-                <Badge variant="secondary">
-                  {column.tasks.length}
-                </Badge>
+                <Badge variant="secondary">{column.tasks.length}</Badge>
               </div>
               <Droppable droppableId={column.id}>
                 {(provided) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="flex flex-col gap-3"
+                    className="flex flex-col gap-2 min-h-[500px]"
                   >
                     {column.tasks.map((task, index) => (
                       <Draggable
@@ -155,22 +170,66 @@ export function TaskBoard({
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className="cursor-grab active:cursor-grabbing"
+                            className="cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => setSelectedTask(task)}
                           >
                             <CardHeader className="p-4">
-                              <CardTitle className="text-sm font-medium">
-                                {task.title}
-                              </CardTitle>
+                              <div className="flex items-start justify-between">
+                                <CardTitle className="text-sm font-medium">
+                                  {task.title}
+                                </CardTitle>
+                                <Badge
+                                  className={`${getPriorityColor(
+                                    task.priority
+                                  )} text-white`}
+                                >
+                                  {task.priority}
+                                </Badge>
+                              </div>
                               {task.description && (
-                                <CardDescription className="text-xs">
+                                <CardDescription className="text-sm">
                                   {task.description}
                                 </CardDescription>
                               )}
                             </CardHeader>
                             <CardContent className="p-4 pt-0">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  {task.assignee ? (
+                              <div className="flex flex-col gap-2">
+                                {task.dueDate && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Clock className="h-4 w-4" />
+                                    {format(new Date(task.dueDate), "MMM d, yyyy")}
+                                  </div>
+                                )}
+                                {task._count && task._count.subtasks > 0 && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <ListChecks className="h-4 w-4" />
+                                    {task._count.subtasks} subtasks
+                                  </div>
+                                )}
+                                {task._count && task._count.dependencies > 0 && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <LinkIcon className="h-4 w-4" />
+                                    {task._count.dependencies} dependencies
+                                  </div>
+                                )}
+                                {task.labels && task.labels.length > 0 && (
+                                  <div className="flex items-center gap-2">
+                                    <Tag className="h-4 w-4 text-muted-foreground" />
+                                    <div className="flex gap-1">
+                                      {task.labels.map((label) => (
+                                        <Badge
+                                          key={label}
+                                          variant="secondary"
+                                          className="text-xs"
+                                        >
+                                          {label}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {task.assignee && (
+                                  <div className="flex items-center gap-2">
                                     <Avatar className="h-6 w-6">
                                       <AvatarImage
                                         src={task.assignee.image || ""}
@@ -183,24 +242,10 @@ export function TaskBoard({
                                           .join("")}
                                       </AvatarFallback>
                                     </Avatar>
-                                  ) : (
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarFallback>?</AvatarFallback>
-                                    </Avatar>
-                                  )}
-                                  <Badge
-                                    className={cn(
-                                      "capitalize",
-                                      priorityColors[task.priority]
-                                    )}
-                                  >
-                                    {task.priority}
-                                  </Badge>
-                                </div>
-                                {task.dueDate && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {format(new Date(task.dueDate), "MMM d")}
-                                  </span>
+                                    <span className="text-sm text-muted-foreground">
+                                      {task.assignee.name}
+                                    </span>
+                                  </div>
                                 )}
                               </div>
                             </CardContent>
@@ -217,13 +262,15 @@ export function TaskBoard({
         </div>
       </DragDropContext>
 
-      <TaskDialog
-        open={isCreating}
-        onOpenChange={setIsCreating}
-        onSubmit={handleCreate}
-        projectMembers={projectMembers}
-        mode="create"
-      />
+      {selectedTask && (
+        <TaskDialog
+          open={!!selectedTask}
+          onOpenChange={() => setSelectedTask(null)}
+          task={selectedTask}
+          onUpdate={onTaskUpdate}
+          currentUserId={currentUserId}
+        />
+      )}
     </>
   )
 }
