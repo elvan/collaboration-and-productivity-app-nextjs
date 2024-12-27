@@ -183,7 +183,10 @@ model Task {
   dependencies    TaskDependency[] @relation("DependentTasks")
   blockedBy       TaskDependency[] @relation("BlockingTasks")
   recurring       RecurringTask?
-
+  priority      TaskPriority? @relation(fields: [priorityId], references: [id])
+  priorityId    String?
+  lists         TaskListItem[]
+  tags          TaskTagAssignment[]
   // Relations
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   parent      Task?    @relation("TaskHierarchy", fields: [parentId], references: [id])
@@ -194,7 +197,6 @@ model Task {
   comments    Comment[]
   attachments Attachment[]
   activities  Activity[]
-  lists       TaskList[]
   outgoingRelationships TaskRelationship[] @relation("SourceTask")
   incomingRelationships TaskRelationship[] @relation("TargetTask")
 
@@ -207,6 +209,7 @@ model Task {
   @@index([dueDate])
   @@index([typeId])
   @@index([statusId])
+  @@index([priorityId])
 }
 
 model TaskList {
@@ -887,7 +890,6 @@ model Comment {
   updatedAt DateTime  @updatedAt
   userId    String
   taskId    String
-  parentId  String?
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
   parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
@@ -983,22 +985,117 @@ model TaskType {
   @@index([projectId])
 }
 
-model TaskStatus {
-  id          String    @id @default(cuid())
-  name        String
-  color       String
-  description String?
-  type        String
-  order       Int
-  metadata    Json?
-  projectId   String
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tasks       Task[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model TaskPriority {
+  id            String    @id @default(cuid())
+  name          String
+  level         Int       // 1-5 for priority levels
+  color         String
+  icon          String?
+  description   String?
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  tasks         Task[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
+  @@unique([projectId, name])
   @@index([projectId])
-  @@index([order])
+  @@index([level])
+}
+
+model TaskStatus {
+  id            String    @id @default(cuid())
+  name          String
+  color         String
+  icon          String?
+  description   String?
+  category      String    // "todo", "in_progress", "done", "canceled", etc.
+  position      Int       // For ordering within category
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  tasks         Task[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([category])
+}
+
+model TaskList {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  icon          String?
+  color         String?
+  viewType      String    // "list", "board", "calendar", "gantt", "timeline"
+  filters       Json?     // Saved filters for the list
+  sortOrder     Json?     // Saved sort order
+  groupBy       String?   // Field to group by
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  tasks         TaskListItem[]
+  parent        TaskList? @relation("TaskListHierarchy", fields: [parentId], references: [id])
+  parentId      String?
+  children      TaskList[] @relation("TaskListHierarchy")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model TaskListItem {
+  id            String    @id @default(cuid())
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId        String
+  list          TaskList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  listId        String
+  position      Float     // For ordering within list
+  pinned        Boolean   @default(false)
+  hidden        Boolean   @default(false)
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([taskId, listId])
+  @@index([taskId])
+  @@index([listId])
+  @@index([position])
+}
+
+model TaskTag {
+  id            String    @id @default(cuid())
+  name          String
+  color         String
+  icon          String?
+  description   String?
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  tasks         TaskTagAssignment[]
+  parent        TaskTag?  @relation("TaskTagHierarchy", fields: [parentId], references: [id])
+  parentId      String?
+  children      TaskTag[] @relation("TaskTagHierarchy")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model TaskTagAssignment {
+  id            String    @id @default(cuid())
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId        String
+  tag           TaskTag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId         String
+  createdAt     DateTime  @default(now())
+
+  @@unique([taskId, tagId])
+  @@index([taskId])
+  @@index([tagId])
 }
 
 model CustomFieldValue {
