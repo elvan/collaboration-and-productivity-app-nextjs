@@ -144,22 +144,17 @@ model WorkflowAutomation {
 }
 
 model Activity {
-  id          String   @id @default(cuid())
-  type        String   // task_created, task_updated, comment_added, etc.
-  projectId   String
-  taskId      String?
-  userId      String?
-  metadata    Json?    // Additional activity data
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  type      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  userId    String
+  taskId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  task        Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user        User?    @relation(fields: [userId], references: [id])
-
-  @@index([projectId])
-  @@index([taskId])
   @@index([userId])
+  @@index([taskId])
   @@index([type])
   @@index([createdAt])
 }
@@ -875,25 +870,38 @@ model CalendarIntegration {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   content   String
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  userId    String
   taskId    String
-  authorId  String
   parentId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
 
-  // Relations
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id])
-  parent    Comment? @relation("CommentThread", fields: [parentId], references: [id])
-  replies   Comment[] @relation("CommentThread")
-  mentions  Mention[]
-  emailLogs     EmailLog[]
-
+  @@index([userId])
   @@index([taskId])
-  @@index([authorId])
   @@index([parentId])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  type      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  userId    String
+  taskId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([taskId])
+  @@index([type])
+  @@index([createdAt])
 }
 
 model Mention {
