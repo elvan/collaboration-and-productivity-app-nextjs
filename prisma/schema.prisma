@@ -177,6 +177,27 @@ model Notification {
   @@index([createdAt])
 }
 
+model NotificationDelivery {
+  id            String    @id @default(cuid())
+  notificationId String
+  userId        String
+  channel       String    // "app", "email", "push"
+  status        String    // "sent", "delivered", "failed", "clicked", "dismissed"
+  error         String?   // Error message if failed
+  metadata      Json?     // Additional context (e.g., device info, email client)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  notification  Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([userId])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
+}
+
 model NotificationPreference {
   id        String   @id @default(cuid())
   userId    String
