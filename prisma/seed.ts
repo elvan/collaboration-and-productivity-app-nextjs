@@ -1,99 +1,156 @@
-import { PrismaClient } from "@prisma/client"
-import { hash } from "bcryptjs"
+import { PrismaClient } from '@prisma/client';
+import { hash } from 'bcryptjs';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 async function main() {
-  // Create demo user
-  const password = await hash("password123", 10)
-  const user = await prisma.user.upsert({
-    where: { email: "demo@example.com" },
-    update: {},
-    create: {
-      email: "demo@example.com",
-      name: "Demo User",
-      password,
+  // Create test user
+  const hashedPassword = await hash('password123', 12);
+  const user = await prisma.user.create({
+    data: {
+      name: 'Test User',
+      email: 'test@example.com',
+      password: hashedPassword,
     },
-  })
+  });
 
-  // Create demo workspace
-  const workspace = await prisma.workspace.upsert({
-    where: { id: "demo-workspace" },
-    update: {},
-    create: {
-      id: "demo-workspace",
-      name: "Demo Workspace",
-      description: "A demo workspace for testing",
+  // Create workspace
+  const workspace = await prisma.workspace.create({
+    data: {
+      name: 'Test Workspace',
+      description: 'A workspace for testing',
       members: {
         create: {
           userId: user.id,
-          role: "admin",
+          role: 'admin',
         },
       },
     },
-  })
+  });
 
-  // Create demo project
+  // Create project
   const project = await prisma.project.create({
     data: {
-      name: "Website Redesign",
-      description: "Redesign and implement the company website",
-      status: "active",
-      priority: "high",
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      workspace: { connect: { id: workspace.id } },
-      owner: { connect: { id: user.id } },
-      members: { connect: [{ id: user.id }] },
+      name: 'Test Project',
+      description: 'A project for testing',
+      ownerId: user.id,
+      workspaceId: workspace.id,
     },
-  })
+  });
 
-  // Create demo tasks
-  const tasks = await Promise.all([
-    prisma.task.create({
-      data: {
-        title: "Design System Setup",
-        description: "Set up the design system and component library",
-        status: "in_progress",
-        priority: "high",
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-        project: { connect: { id: project.id } },
-        assignee: { connect: { id: user.id } },
-      },
-    }),
-    prisma.task.create({
-      data: {
-        title: "Homepage Implementation",
-        description: "Implement the new homepage design",
-        status: "todo",
-        priority: "medium",
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
-        project: { connect: { id: project.id } },
-        assignee: { connect: { id: user.id } },
-      },
-    }),
-    prisma.task.create({
-      data: {
-        title: "User Testing",
-        description: "Conduct user testing sessions",
-        status: "todo",
-        priority: "medium",
-        dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 21 days from now
-        project: { connect: { id: project.id } },
-        assignee: { connect: { id: user.id } },
-      },
-    }),
-  ])
+  // Create task statuses
+  const todoStatus = await prisma.taskStatus.create({
+    data: {
+      name: 'To Do',
+      color: '#ff0000',
+      category: 'todo',
+      position: 1,
+      projectId: project.id,
+    },
+  });
 
-  console.log({ user, workspace, project, tasks })
+  const inProgressStatus = await prisma.taskStatus.create({
+    data: {
+      name: 'In Progress',
+      color: '#00ff00',
+      category: 'in_progress',
+      position: 2,
+      projectId: project.id,
+    },
+  });
+
+  const doneStatus = await prisma.taskStatus.create({
+    data: {
+      name: 'Done',
+      color: '#0000ff',
+      category: 'done',
+      position: 3,
+      projectId: project.id,
+    },
+  });
+
+  // Create task priorities
+  const highPriority = await prisma.taskPriority.create({
+    data: {
+      name: 'High',
+      level: 1,
+      color: '#ff0000',
+      projectId: project.id,
+    },
+  });
+
+  const mediumPriority = await prisma.taskPriority.create({
+    data: {
+      name: 'Medium',
+      level: 2,
+      color: '#ffff00',
+      projectId: project.id,
+    },
+  });
+
+  const lowPriority = await prisma.taskPriority.create({
+    data: {
+      name: 'Low',
+      level: 3,
+      color: '#00ff00',
+      projectId: project.id,
+    },
+  });
+
+  // Create tasks
+  const task1 = await prisma.task.create({
+    data: {
+      title: 'First Task',
+      description: 'This is the first task',
+      status: 'todo',
+      priority: 'high',
+      dueDate: new Date('2024-01-01'),
+      projectId: project.id,
+      createdById: user.id,
+      assigneeId: user.id,
+      statusId: todoStatus.id,
+      priorityId: highPriority.id,
+    },
+  });
+
+  const task2 = await prisma.task.create({
+    data: {
+      title: 'Second Task',
+      description: 'This is the second task',
+      status: 'in_progress',
+      priority: 'medium',
+      dueDate: new Date('2024-01-15'),
+      projectId: project.id,
+      createdById: user.id,
+      assigneeId: user.id,
+      statusId: inProgressStatus.id,
+      priorityId: mediumPriority.id,
+    },
+  });
+
+  const task3 = await prisma.task.create({
+    data: {
+      title: 'Third Task',
+      description: 'This is the third task',
+      status: 'done',
+      priority: 'low',
+      dueDate: new Date('2024-01-30'),
+      projectId: project.id,
+      createdById: user.id,
+      assigneeId: user.id,
+      statusId: doneStatus.id,
+      priorityId: lowPriority.id,
+    },
+  });
+
+  console.log('Database seeded!');
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
   })
-  .catch(async (e) => {
-    console.error(e)
-    await prisma.$disconnect()
-    process.exit(1)
-  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
