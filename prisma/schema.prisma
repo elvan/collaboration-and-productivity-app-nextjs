@@ -100,6 +100,7 @@ model Project {
   tasks       Task[]
   invitations ProjectInvitation[]
   activities  Activity[]
+  customFields CustomField[]
 
   @@index([workspaceId])
   @@index([ownerId])
@@ -124,6 +125,10 @@ model Task {
   labels      Label[]
   dependencies     TaskDependency[] @relation("DependentTask")
   dependentTasks   TaskDependency[] @relation("Dependency")
+  customFields CustomFieldValue[]
+  comments     Comment[]
+  mentions     Mention[]
+  attachments  Attachment[]
 
   @@index([projectId])
   @@index([assigneeId])
@@ -815,4 +820,127 @@ model WorkspaceAnalytics {
   workspace         Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])
+}
+
+model CustomField {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // text, number, date, select, multiselect, user
+  options     Json?    // For select/multiselect fields
+  required    Boolean  @default(false)
+  projectId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  values      CustomFieldValue[]
+
+  @@unique([name, projectId])
+  @@index([projectId])
+}
+
+model CustomFieldValue {
+  id            String   @id @default(cuid())
+  value         Json
+  taskId        String
+  customFieldId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  task         Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  customField  CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, customFieldId])
+  @@index([taskId])
+  @@index([customFieldId])
+}
+
+model Workflow {
+  id          String   @id @default(cuid())
+  name        String
+  projectId   String
+  statuses    Json     // Array of status objects with transitions
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  automations WorkflowAutomation[]
+
+  @@unique([name, projectId])
+  @@index([projectId])
+}
+
+model WorkflowAutomation {
+  id          String   @id @default(cuid())
+  name        String
+  workflowId  String
+  trigger     Json     // Trigger conditions
+  actions     Json     // Actions to perform
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  authorId  String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+  parent    Comment? @relation("CommentThread", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentThread")
+  mentions  Mention[]
+
+  @@index([taskId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model Mention {
+  id        String   @id @default(cuid())
+  taskId    String
+  commentId String?
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([commentId])
+  @@index([userId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  type      String
+  size      Int
+  taskId    String
+  uploaderId String
+  createdAt DateTime @default(now())
+
+  // Relations
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader  User     @relation(fields: [uploaderId], references: [id])
+
+  @@index([taskId])
+  @@index([uploaderId])
 }

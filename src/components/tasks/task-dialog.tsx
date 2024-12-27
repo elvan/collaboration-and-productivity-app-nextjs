@@ -68,6 +68,8 @@ import {
   X,
 } from "lucide-react"
 import { TaskDependencies } from "./task-dependencies"
+import { TaskComments } from "./task-comments"
+import { TaskAttachments } from "./task-attachments"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const taskSchema = z.object({
@@ -139,6 +141,8 @@ export function TaskDialog({
   const [dependents, setDependents] = useState([])
   const [availableTasks, setAvailableTasks] = useState([])
   const [activeTab, setActiveTab] = useState("details")
+  const [comments, setComments] = useState([])
+  const [attachments, setAttachments] = useState([])
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
@@ -204,6 +208,22 @@ export function TaskDialog({
     // implement remove dependency logic
   }
 
+  const handleAddComment = () => {
+    // implement add comment logic
+  }
+
+  const handleDeleteComment = () => {
+    // implement delete comment logic
+  }
+
+  const handleAddAttachment = () => {
+    // implement add attachment logic
+  }
+
+  const handleDeleteAttachment = () => {
+    // implement delete attachment logic
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -219,6 +239,8 @@ export function TaskDialog({
               <TabsList>
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
+                <TabsTrigger value="comments">Comments</TabsTrigger>
+                <TabsTrigger value="attachments">Attachments</TabsTrigger>
               </TabsList>
               <TabsContent value="details" className="space-y-4">
                 <div className="grid gap-4 py-4">
@@ -404,6 +426,22 @@ export function TaskDialog({
                   availableTasks={availableTasks}
                   onAddDependency={handleAddDependency}
                   onRemoveDependency={handleRemoveDependency}
+                />
+              </TabsContent>
+              <TabsContent value="comments" className="space-y-4">
+                <TaskComments
+                  taskId={task.id}
+                  comments={comments}
+                  onAddComment={handleAddComment}
+                  onDeleteComment={handleDeleteComment}
+                />
+              </TabsContent>
+              <TabsContent value="attachments" className="space-y-4">
+                <TaskAttachments
+                  taskId={task.id}
+                  attachments={attachments}
+                  onAddAttachment={handleAddAttachment}
+                  onDeleteAttachment={handleDeleteAttachment}
                 />
               </TabsContent>
             </Tabs>
