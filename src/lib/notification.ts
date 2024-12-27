@@ -1,5 +1,6 @@
 import { Activity, Project, User } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { sendActivityNotificationEmail } from "@/lib/email"
 
 interface NotificationData {
   type: string
@@ -105,6 +106,9 @@ export async function createActivityNotification(
       activityId: activity.id,
     })
   }
+
+  // Send email notifications
+  await sendActivityNotificationEmail(activity)
 }
 
 export async function markNotificationAsRead(notificationId: string) {
