@@ -354,3 +354,95 @@ export async function getTaskStats(projectId: string) {
     byAssignee: assigneeStats,
   }
 }
+
+export async function getTaskDependencies(taskId: string) {
+  const dependencies = await prisma.taskDependency.findMany({
+    where: {
+      dependentTaskId: taskId,
+    },
+    include: {
+      dependency: true,
+    },
+  })
+
+  const dependents = await prisma.taskDependency.findMany({
+    where: {
+      dependencyId: taskId,
+    },
+    include: {
+      dependentTask: true,
+    },
+  })
+
+  return {
+    dependencies: dependencies.map((d) => d.dependency),
+    dependents: dependents.map((d) => d.dependentTask),
+  }
+}
+
+export async function addTaskDependency(taskId: string, dependencyId: string) {
+  // Check for circular dependencies
+  const dependencyChain = await getTaskDependencyChain(dependencyId)
+  if (dependencyChain.includes(taskId)) {
+    throw new Error("Circular dependency detected")
+  }
+
+  return prisma.taskDependency.create({
+    data: {
+      dependentTaskId: taskId,
+      dependencyId: dependencyId,
+    },
+  })
+}
+
+export async function removeTaskDependency(taskId: string, dependencyId: string) {
+  return prisma.taskDependency.deleteMany({
+    where: {
+      dependentTaskId: taskId,
+      dependencyId: dependencyId,
+    },
+  })
+}
+
+export async function getTaskDependencyChain(taskId: string): Promise<string[]> {
+  const dependencies = await prisma.taskDependency.findMany({
+    where: {
+      dependentTaskId: taskId,
+    },
+    select: {
+      dependencyId: true,
+    },
+  })
+
+  const chain = [taskId]
+  for (const dep of dependencies) {
+    const subChain = await getTaskDependencyChain(dep.dependencyId)
+    chain.push(...subChain)
+  }
+
+  return chain
+}
+
+export async function getTasksInDateRange(startDate: Date, endDate: Date) {
+  return prisma.task.findMany({
+    where: {
+      OR: [
+        {
+          startDate: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        {
+          dueDate: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      ],
+    },
+    include: {
+      assignee: true,
+    },
+  })
+}

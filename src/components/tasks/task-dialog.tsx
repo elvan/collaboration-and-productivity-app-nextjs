@@ -67,6 +67,8 @@ import {
   Trash2,
   X,
 } from "lucide-react"
+import { TaskDependencies } from "./task-dependencies"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -133,6 +135,10 @@ export function TaskDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [labels, setLabels] = useState<string[]>(task.labels || [])
   const [newLabel, setNewLabel] = useState("")
+  const [dependencies, setDependencies] = useState([])
+  const [dependents, setDependents] = useState([])
+  const [availableTasks, setAvailableTasks] = useState([])
+  const [activeTab, setActiveTab] = useState("details")
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
@@ -190,6 +196,14 @@ export function TaskDialog({
     }
   }
 
+  const handleAddDependency = () => {
+    // implement add dependency logic
+  }
+
+  const handleRemoveDependency = () => {
+    // implement remove dependency logic
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -201,180 +215,198 @@ export function TaskDialog({
                 Make changes to the task here. Click save when you&apos;re done.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
+              </TabsList>
+              <TabsContent value="details" className="space-y-4">
+                <div className="grid gap-4 py-4">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
+                          <Input {...field} />
                         </FormControl>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map((status) => (
-                            <SelectItem
-                              key={status.value}
-                              value={status.value}
-                            >
-                              {status.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="priority"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Priority</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {PRIORITY_OPTIONS.map((priority) => (
-                            <SelectItem
-                              key={priority.value}
-                              value={priority.value}
-                            >
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={`h-2 w-2 rounded-full ${getPriorityColor(
-                                    priority.value
-                                  )}`}
-                                />
-                                {priority.label}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Due Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={`w-full pl-3 text-left font-normal ${
-                              !field.value && "text-muted-foreground"
-                            }`}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value || undefined}
-                          onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="space-y-2">
-                <FormLabel>Labels</FormLabel>
-                <div className="flex flex-wrap gap-2">
-                  {labels.map((label) => (
-                    <Badge
-                      key={label}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {label}
-                      <button
-                        type="button"
-                        onClick={() => removeLabel(label)}
-                        className="ml-1 rounded-full hover:bg-muted"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    value={newLabel}
-                    onChange={(e) => setNewLabel(e.target.value)}
-                    placeholder="Add a label"
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault()
-                        addLabel()
-                      }
-                    }}
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  <Button type="button" onClick={addLabel} size="sm">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {STATUS_OPTIONS.map((status) => (
+                                <SelectItem
+                                  key={status.value}
+                                  value={status.value}
+                                >
+                                  {status.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Priority</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select priority" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {PRIORITY_OPTIONS.map((priority) => (
+                                <SelectItem
+                                  key={priority.value}
+                                  value={priority.value}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={`h-2 w-2 rounded-full ${getPriorityColor(
+                                        priority.value
+                                      )}`}
+                                    />
+                                    {priority.label}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Due Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={`w-full pl-3 text-left font-normal ${
+                                  !field.value && "text-muted-foreground"
+                                }`}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value || undefined}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < new Date(new Date().setHours(0, 0, 0, 0))
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="space-y-2">
+                    <FormLabel>Labels</FormLabel>
+                    <div className="flex flex-wrap gap-2">
+                      {labels.map((label) => (
+                        <Badge
+                          key={label}
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          {label}
+                          <button
+                            type="button"
+                            onClick={() => removeLabel(label)}
+                            className="ml-1 rounded-full hover:bg-muted"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newLabel}
+                        onChange={(e) => setNewLabel(e.target.value)}
+                        placeholder="Add a label"
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            addLabel()
+                          }
+                        }}
+                      />
+                      <Button type="button" onClick={addLabel} size="sm">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </TabsContent>
+              <TabsContent value="dependencies" className="space-y-4">
+                <TaskDependencies
+                  task={task}
+                  dependencies={dependencies}
+                  dependents={dependents}
+                  availableTasks={availableTasks}
+                  onAddDependency={handleAddDependency}
+                  onRemoveDependency={handleRemoveDependency}
+                />
+              </TabsContent>
+            </Tabs>
             <DialogFooter>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
