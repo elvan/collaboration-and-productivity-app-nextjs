@@ -31,6 +31,8 @@ model User {
   notificationRateLimits NotificationRateLimit[]
   createdTemplates NotificationTemplate[] @relation("CreatedTemplates")
   updatedTemplates NotificationTemplate[] @relation("UpdatedTemplates")
+  calendarIntegrations CalendarIntegration[]
+  emailLogs           EmailLog[]
 }
 
 model Account {
@@ -101,6 +103,8 @@ model Project {
   invitations ProjectInvitation[]
   activities  Activity[]
   customFields CustomField[]
+  webhooks      Webhook[]
+  emailTemplates EmailTemplate[]
 
   @@index([workspaceId])
   @@index([ownerId])
@@ -129,6 +133,7 @@ model Task {
   comments     Comment[]
   mentions     Mention[]
   attachments  Attachment[]
+  emailLogs     EmailLog[]
 
   @@index([projectId])
   @@index([assigneeId])
@@ -703,43 +708,219 @@ model CampaignEvent {
 }
 
 model Webhook {
-  id            String   @id @default(cuid())
-  name          String
-  url           String
-  secret        String
-  events        String[] // Array of event types to trigger webhook
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  createdById   String
-  workspaceId   String
+  id          String   @id @default(cuid())
+  url         String
+  events      Json     // Array of event names
+  secret      String
+  enabled     Boolean  @default(true)
+  description String?
+  projectId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  createdBy     User      @relation(fields: [createdById], references: [id])
-  workspace     Workspace @relation(fields: [workspaceId], references: [id])
-  deliveries    WebhookDelivery[]
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
 
-  @@index([workspaceId])
-  @@index([createdById])
-  @@index([isActive])
+  @@index([projectId])
 }
 
 model WebhookDelivery {
-  id            String   @id @default(cuid())
-  webhookId     String
-  event         String
-  payload       Json
-  response      Json?
-  statusCode    Int?
-  error         String?
-  attempts      Int      @default(0)
-  succeededAt   DateTime?
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  webhookId   String
+  event       String
+  payload     Json
+  status      String   // success, failed
+  statusCode  Int
+  response    String?
+  createdAt   DateTime @default(now())
 
-  webhook       Webhook  @relation(fields: [webhookId], references: [id])
+  // Relations
+  webhook     Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
   @@index([webhookId])
-  @@index([event])
-  @@index([succeededAt])
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  subject     String
+  body        String   @db.Text
+  events      Json     // Array of event names
+  enabled     Boolean  @default(true)
+  projectId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs        EmailLog[]
+
+  @@index([projectId])
+}
+
+model EmailLog {
+  id          String   @id @default(cuid())
+  templateId  String
+  recipientId String
+  taskId      String
+  commentId   String?
+  subject     String
+  body        String   @db.Text
+  createdAt   DateTime @default(now())
+
+  // Relations
+  template    EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  recipient   User         @relation(fields: [recipientId], references: [id])
+  task        Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment     Comment?     @relation(fields: [commentId], references: [id])
+
+  @@index([templateId])
+  @@index([recipientId])
+  @@index([taskId])
+  @@index([commentId])
+}
+
+model CalendarIntegration {
+  id           String   @id @default(cuid())
+  provider     String   // google, outlook, ical
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  settings     Json?
+  enabled      Boolean  @default(true)
+  userId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  authorId  String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+  parent    Comment? @relation("CommentThread", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentThread")
+  mentions  Mention[]
+  emailLogs     EmailLog[]
+
+  @@index([taskId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model Mention {
+  id        String   @id @default(cuid())
+  taskId    String
+  commentId String?
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([commentId])
+  @@index([userId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  type      String
+  size      Int
+  taskId    String
+  uploaderId String
+  createdAt DateTime @default(now())
+
+  // Relations
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader  User     @relation(fields: [uploaderId], references: [id])
+
+  @@index([taskId])
+  @@index([uploaderId])
+}
+
+model CustomField {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // text, number, date, select, multiselect, user
+  options     Json?    // For select/multiselect fields
+  required    Boolean  @default(false)
+  projectId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  values      CustomFieldValue[]
+
+  @@unique([name, projectId])
+  @@index([projectId])
+}
+
+model CustomFieldValue {
+  id            String   @id @default(cuid())
+  value         Json
+  taskId        String
+  customFieldId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  task         Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  customField  CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, customFieldId])
+  @@index([taskId])
+  @@index([customFieldId])
+}
+
+model Workflow {
+  id          String   @id @default(cuid())
+  name        String
+  projectId   String
+  statuses    Json     // Array of status objects with transitions
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  automations WorkflowAutomation[]
+
+  @@unique([name, projectId])
+  @@index([projectId])
+}
+
+model WorkflowAutomation {
+  id          String   @id @default(cuid())
+  name        String
+  workflowId  String
+  trigger     Json     // Trigger conditions
+  actions     Json     // Actions to perform
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
 }
 
 model Integration {
@@ -820,127 +1001,4 @@ model WorkspaceAnalytics {
   workspace         Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])
-}
-
-model CustomField {
-  id          String   @id @default(cuid())
-  name        String
-  type        String   // text, number, date, select, multiselect, user
-  options     Json?    // For select/multiselect fields
-  required    Boolean  @default(false)
-  projectId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  values      CustomFieldValue[]
-
-  @@unique([name, projectId])
-  @@index([projectId])
-}
-
-model CustomFieldValue {
-  id            String   @id @default(cuid())
-  value         Json
-  taskId        String
-  customFieldId String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  task         Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  customField  CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
-
-  @@unique([taskId, customFieldId])
-  @@index([taskId])
-  @@index([customFieldId])
-}
-
-model Workflow {
-  id          String   @id @default(cuid())
-  name        String
-  projectId   String
-  statuses    Json     // Array of status objects with transitions
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  automations WorkflowAutomation[]
-
-  @@unique([name, projectId])
-  @@index([projectId])
-}
-
-model WorkflowAutomation {
-  id          String   @id @default(cuid())
-  name        String
-  workflowId  String
-  trigger     Json     // Trigger conditions
-  actions     Json     // Actions to perform
-  enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-
-  @@index([workflowId])
-}
-
-model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  taskId    String
-  authorId  String
-  parentId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id])
-  parent    Comment? @relation("CommentThread", fields: [parentId], references: [id])
-  replies   Comment[] @relation("CommentThread")
-  mentions  Mention[]
-
-  @@index([taskId])
-  @@index([authorId])
-  @@index([parentId])
-}
-
-model Mention {
-  id        String   @id @default(cuid())
-  taskId    String
-  commentId String?
-  userId    String
-  createdAt DateTime @default(now())
-
-  // Relations
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@index([taskId])
-  @@index([commentId])
-  @@index([userId])
-}
-
-model Attachment {
-  id        String   @id @default(cuid())
-  name      String
-  url       String
-  type      String
-  size      Int
-  taskId    String
-  uploaderId String
-  createdAt DateTime @default(now())
-
-  // Relations
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  uploader  User     @relation(fields: [uploaderId], references: [id])
-
-  @@index([taskId])
-  @@index([uploaderId])
 }
