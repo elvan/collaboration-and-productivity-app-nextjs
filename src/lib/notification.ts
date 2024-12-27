@@ -5,6 +5,7 @@ import { trackNotification } from "@/lib/analytics"
 import { sendPushNotification } from "@/lib/web-push"
 import { trackDelivery } from "@/lib/notification-delivery"
 import { checkRateLimit, trackNotificationSent } from "@/lib/notification-rate-limit"
+import { addToBatch } from "@/lib/notification-batching"
 import {
   NotificationTemplateData,
   formatNotification,
@@ -81,33 +82,36 @@ export async function createNotificationFromTemplate(
     },
   })
 
-  // Track app notification
-  await trackNotificationSent({
-    userId,
-    channel: "app",
-    templateType,
-    category: formattedNotification.category,
-  })
+  // Try to batch the notification
+  const batched = await addToBatch(notification)
 
-  // Track in-app notification delivery
-  await trackDelivery(notification.id, userId, "app", "sent", undefined, {
-    type: formattedNotification.type,
-    category: formattedNotification.category,
-    priority: formattedNotification.priority,
-  })
-
-  // Track analytics
-  await trackNotification({
-    userId,
-    type: "notification",
-    action: "sent",
-    metadata: {
-      notificationId: notification.id,
-      notificationType: formattedNotification.type,
+  if (!batched) {
+    // If not batched, send immediately
+    await trackNotificationSent({
+      userId,
+      channel: "app",
+      templateType,
       category: formattedNotification.category,
-      groupId: formattedNotification.groupId,
-    },
-  })
+    })
+
+    await trackDelivery(notification.id, userId, "app", "sent", undefined, {
+      type: formattedNotification.type,
+      category: formattedNotification.category,
+      priority: formattedNotification.priority,
+    })
+
+    await trackNotification({
+      userId,
+      type: "notification",
+      action: "sent",
+      metadata: {
+        notificationId: notification.id,
+        notificationType: formattedNotification.type,
+        category: formattedNotification.category,
+        groupId: formattedNotification.groupId,
+      },
+    })
+  }
 
   // Check and send push notification
   const pushRateLimit = await checkRateLimit({
@@ -129,6 +133,7 @@ export async function createNotificationFromTemplate(
           ...formattedNotification.metadata,
           category: formattedNotification.category,
           priority: formattedNotification.priority,
+          isBatched: batched,
         },
       })
       await trackDelivery(notification.id, userId, "push", "sent")

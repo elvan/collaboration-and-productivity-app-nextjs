@@ -27,6 +27,7 @@ import {
 } from "@/lib/notification-preferences"
 import { getTemplate } from "@/lib/notification-templates"
 import { getRateLimits, updateRateLimit } from "@/lib/notification-rate-limit"
+import { getBatchingRules, updateBatchingRule } from "@/lib/notification-batching"
 
 const soundOptions = [
   { label: "Default", value: "default" },
@@ -118,17 +119,108 @@ function RateLimitSettings({ channel, limits, onUpdate }: RateLimitSettingsProps
   )
 }
 
+interface BatchingSettingsProps {
+  rule: any
+  onUpdate: (values: any) => Promise<void>
+}
+
+function BatchingSettings({ rule, onUpdate }: BatchingSettingsProps) {
+  const [values, setValues] = React.useState({
+    enabled: rule?.enabled ?? true,
+    batchWindow: rule?.batchWindow ?? 300,
+    minBatchSize: rule?.minBatchSize ?? 2,
+    maxBatchSize: rule?.maxBatchSize ?? 10,
+  })
+
+  const handleChange = async (field: string, value: any) => {
+    const newValues = { ...values, [field]: value }
+    setValues(newValues)
+    await onUpdate(newValues)
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>Enable Batching</Label>
+        <Switch
+          checked={values.enabled}
+          onCheckedChange={(checked) => handleChange("enabled", checked)}
+        />
+      </div>
+
+      <div>
+        <Label>Batch Window (seconds)</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={30}
+            max={3600}
+            value={values.batchWindow}
+            onChange={(e) =>
+              handleChange("batchWindow", parseInt(e.target.value))
+            }
+            className="w-24"
+          />
+          <span className="text-sm text-muted-foreground">
+            seconds to wait before sending batch
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <Label>Minimum Batch Size</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={2}
+            max={100}
+            value={values.minBatchSize}
+            onChange={(e) =>
+              handleChange("minBatchSize", parseInt(e.target.value))
+            }
+            className="w-20"
+          />
+          <span className="text-sm text-muted-foreground">
+            notifications to trigger batch
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <Label>Maximum Batch Size</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={2}
+            max={100}
+            value={values.maxBatchSize}
+            onChange={(e) =>
+              handleChange("maxBatchSize", parseInt(e.target.value))
+            }
+            className="w-20"
+          />
+          <span className="text-sm text-muted-foreground">
+            notifications per batch
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function NotificationPreferencesPage() {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [preferences, setPreferences] = React.useState<any[]>([])
   const [rateLimits, setRateLimits] = React.useState<any[]>([])
+  const [batchingRules, setBatchingRules] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
     if (session?.user?.id) {
       loadPreferences()
       loadRateLimits()
+      loadBatchingRules()
     }
   }, [session?.user?.id])
 
@@ -155,6 +247,20 @@ export default function NotificationPreferencesPage() {
       toast({
         title: "Error",
         description: "Failed to load rate limits",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const loadBatchingRules = async () => {
+    try {
+      const rules = await getBatchingRules(session!.user!.id)
+      setBatchingRules(rules)
+    } catch (error) {
+      console.error("Failed to load batching rules:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load batching rules",
         variant: "destructive",
       })
     } finally {
@@ -211,6 +317,26 @@ export default function NotificationPreferencesPage() {
       toast({
         title: "Error",
         description: "Failed to update rate limit",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleBatchingRuleChange = async (values: any) => {
+    try {
+      await updateBatchingRule(session!.user!.id, values)
+      setBatchingRules((prev) =>
+        prev.map((rule) => (rule.category ? rule : { ...rule, ...values }))
+      )
+      toast({
+        title: "Success",
+        description: "Batching rule updated",
+      })
+    } catch (error) {
+      console.error("Failed to update batching rule:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update batching rule",
         variant: "destructive",
       })
     }
@@ -446,6 +572,63 @@ export default function NotificationPreferencesPage() {
                 </Card>
               )
             })}
+          </div>
+        </div>
+
+        {/* Batching Settings */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold">Notification Batching</h2>
+            <p className="text-muted-foreground mt-1">
+              Configure how notifications are grouped and delivered
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Global Batching Rules</CardTitle>
+              <CardDescription>
+                Set default batching rules for all notifications
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BatchingSettings
+                rule={batchingRules.find(
+                  (rule) => !rule.templateType && !rule.category
+                )}
+                onUpdate={async (values) => {
+                  await handleBatchingRuleChange(values)
+                }}
+              />
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {Object.entries(groupedPreferences).map(([category, prefs]) => (
+              <Card key={category}>
+                <CardHeader>
+                  <CardTitle className="capitalize">
+                    {category} Notifications
+                  </CardTitle>
+                  <CardDescription>
+                    Batching settings for {category} notifications
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BatchingSettings
+                    rule={batchingRules.find(
+                      (rule) => rule.category === category
+                    )}
+                    onUpdate={async (values) => {
+                      await handleBatchingRuleChange({
+                        ...values,
+                        category,
+                      })
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </div>

@@ -291,3 +291,50 @@ model NotificationThrottle {
   @@index([windowStart])
   @@index([windowEnd])
 }
+
+model NotificationBatch {
+  id            String    @id @default(cuid())
+  userId        String
+  templateType  String
+  category      String
+  groupId       String?
+  priority      String    @default("normal")
+  status        String    @default("pending") // pending, sent, failed
+  count         Int       @default(0)
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  scheduledFor  DateTime?
+  sentAt        DateTime?
+  error         String?
+  
+  notifications Notification[]
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([templateType])
+  @@index([category])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([createdAt])
+}
+
+model NotificationBatchingRule {
+  id            String    @id @default(cuid())
+  userId        String
+  templateType  String?   // Optional: specific template type to batch
+  category      String?   // Optional: specific category to batch
+  enabled       Boolean   @default(true)
+  batchWindow   Int       @default(300)  // Time window in seconds to batch notifications
+  minBatchSize  Int       @default(2)    // Minimum number of notifications to trigger a batch
+  maxBatchSize  Int       @default(10)   // Maximum number of notifications in a batch
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, templateType, category])
+  @@index([userId])
+  @@index([templateType])
+  @@index([category])
+}
