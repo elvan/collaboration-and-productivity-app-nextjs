@@ -4,15 +4,12 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { DashboardShell } from "@/components/shell"
 import { DashboardHeader } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import { PlusIcon } from "lucide-react"
 import { redirect } from "next/navigation"
-import { ProjectTable } from "@/components/projects/project-table"
-import { CreateProject } from "@/components/projects/create-project"
+import { ProjectManagementDashboard } from "@/components/projects/dashboard"
 
 export const metadata: Metadata = {
   title: "Projects | CollabSpace",
-  description: "Manage your projects",
+  description: "Manage your projects, tasks, and portfolios efficiently with CollabSpace",
 }
 
 async function getProjects(userId: string) {
@@ -69,11 +66,10 @@ export default async function ProjectsPage() {
     <DashboardShell>
       <DashboardHeader
         heading="Projects"
-        text="Create and manage your projects."
+        text="Manage your projects and collaborate with team members."
       >
-        <CreateProject />
       </DashboardHeader>
-      <ProjectTable projects={projects} />
+      <ProjectManagementDashboard projects={projects} userId={session.user.id} />
     </DashboardShell>
   )
 }

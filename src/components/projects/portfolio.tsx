@@ -115,7 +115,7 @@ export function Portfolio() {
                   <div className="h-2 bg-secondary rounded-full">
                     <div
                       className="h-full bg-primary rounded-full"
-                      style={{ width: \`\${project.progress}%\` }}
+                      style={{ width: `${project.progress}%` }}
                     />
                   </div>
                 </div>
