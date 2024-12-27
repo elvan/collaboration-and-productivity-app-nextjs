@@ -1,27 +1,23 @@
 "use client"
 
 import * as React from "react"
-import { Activity, Notification } from "@prisma/client"
-import { useRouter } from "next/navigation"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Notification } from "@prisma/client"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { toast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
-import { Bell } from "lucide-react"
+import { Bell, ChevronDown, ChevronRight, X } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { soundManager } from "@/lib/sounds"
-import { markNotificationAsRead, dismissNotification, trackNotificationClick } from "@/lib/notification"
-import { X } from "lucide-react"
+import {
+  markNotificationAsRead,
+  dismissNotification,
+  trackNotificationClick,
+  getGroupedNotifications,
+} from "@/lib/notification"
 
 interface ExtendedNotification extends Notification {
   activity?: {
@@ -30,14 +26,26 @@ interface ExtendedNotification extends Notification {
       email: string
       image: string | null
     }
-  } | null
+  }
+}
+
+interface NotificationGroup {
+  id: string
+  category: string
+  notifications: Array<{
+    id: string
+    title: string
+    message: string
+    createdAt: Date
+    read: boolean
+    metadata?: Record<string, any>
+  }>
 }
 
 export function NotificationsDropdown() {
-  const router = useRouter()
-  const [notifications, setNotifications] = React.useState<ExtendedNotification[]>(
-    []
-  )
+  const [notifications, setNotifications] = React.useState<ExtendedNotification[]>([])
+  const [groups, setGroups] = React.useState<NotificationGroup[]>([])
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set())
   const [unreadCount, setUnreadCount] = React.useState<number>(0)
   const [isLoading, setIsLoading] = React.useState<boolean>(false)
   const [isOpen, setIsOpen] = React.useState<boolean>(false)
@@ -45,52 +53,57 @@ export function NotificationsDropdown() {
 
   async function fetchNotifications() {
     try {
-      const response = await fetch("/api/notifications?unreadOnly=false&limit=10")
-      if (!response.ok) throw new Error("Failed to fetch notifications")
+      setIsLoading(true)
+      const response = await fetch("/api/notifications")
       const data = await response.json()
-      setNotifications(data.notifications)
-      setUnreadCount(
-        data.notifications.filter((n: Notification) => !n.read).length
-      )
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch notifications",
-        variant: "destructive",
-      })
-    }
-  }
-
-  async function markAllAsRead() {
-    try {
-      const response = await fetch("/api/notifications", {
-        method: "PATCH",
-      })
-      if (!response.ok) throw new Error("Failed to mark notifications as read")
       
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read: true }))
-      )
-      setUnreadCount(0)
+      const { groups, ungrouped } = await getGroupedNotifications(data.userId)
+      setGroups(groups)
+      setNotifications(ungrouped)
+      
+      const unreadCount = [
+        ...ungrouped,
+        ...groups.flatMap((g) => g.notifications),
+      ].filter((n) => !n.read).length
+      
+      setUnreadCount(unreadCount)
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to mark notifications as read",
-        variant: "destructive",
-      })
+      console.error("Failed to fetch notifications:", error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  async function handleNotificationClick(notification: ExtendedNotification) {
+  function toggleGroup(groupId: string) {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupId)) {
+        next.delete(groupId)
+      } else {
+        next.add(groupId)
+      }
+      return next
+    })
+  }
+
+  async function handleNotificationClick(notificationId: string) {
     try {
-      await markNotificationAsRead(notification.id)
-      await trackNotificationClick(notification.id)
+      await markNotificationAsRead(notificationId)
+      await trackNotificationClick(notificationId)
       
       // Update local state
       setNotifications((prev) =>
         prev.map((n) =>
-          n.id === notification.id ? { ...n, read: true } : n
+          n.id === notificationId ? { ...n, read: true } : n
         )
+      )
+      setGroups((prev) =>
+        prev.map((group) => ({
+          ...group,
+          notifications: group.notifications.map((n) =>
+            n.id === notificationId ? { ...n, read: true } : n
+          ),
+        }))
       )
       setUnreadCount((prev) => Math.max(0, prev - 1))
 
@@ -102,16 +115,26 @@ export function NotificationsDropdown() {
     }
   }
 
-  async function handleDismiss(e: React.MouseEvent, notification: ExtendedNotification) {
+  async function handleDismiss(e: React.MouseEvent, notificationId: string) {
     e.stopPropagation()
     try {
-      await dismissNotification(notification.id)
+      await dismissNotification(notificationId)
       
       // Update local state
       setNotifications((prev) =>
-        prev.filter((n) => n.id !== notification.id)
+        prev.filter((n) => n.id !== notificationId)
       )
-      if (!notification.read) {
+      setGroups((prev) =>
+        prev.map((group) => ({
+          ...group,
+          notifications: group.notifications.filter((n) => n.id !== notificationId),
+        })).filter((group) => group.notifications.length > 0)
+      )
+      
+      const notification = notifications.find((n) => n.id === notificationId) ||
+        groups.flatMap((g) => g.notifications).find((n) => n.id === notificationId)
+      
+      if (notification && !notification.read) {
         setUnreadCount((prev) => Math.max(0, prev - 1))
       }
     } catch (error) {
@@ -119,43 +142,62 @@ export function NotificationsDropdown() {
     }
   }
 
+  async function handleMarkAllAsRead() {
+    try {
+      await fetch("/api/notifications/mark-all-read", { method: "POST" })
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, read: true }))
+      )
+      setGroups((prev) =>
+        prev.map((group) => ({
+          ...group,
+          notifications: group.notifications.map((n) => ({ ...n, read: true })),
+        }))
+      )
+      setUnreadCount(0)
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error)
+    }
+  }
+
   React.useEffect(() => {
     if (isOpen) {
       fetchNotifications()
     }
-  }, [isOpen])
 
-  // Poll for new notifications every minute
-  React.useEffect(() => {
+    // Poll for new notifications
     const interval = setInterval(() => {
-      if (!isOpen) {
+      if (isOpen) {
         fetchNotifications()
       }
-    }, 60000)
+    }, 30000)
 
     return () => clearInterval(interval)
   }, [isOpen])
 
   React.useEffect(() => {
-    if (notifications.length > previousCount.current) {
+    const totalCount = notifications.length +
+      groups.reduce((sum, group) => sum + group.notifications.length, 0)
+    
+    if (totalCount > previousCount.current) {
       // Play notification sound for new notifications
       soundManager.play()
     }
-    previousCount.current = notifications.length
-  }, [notifications.length])
+    previousCount.current = totalCount
+  }, [notifications.length, groups])
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           className="relative"
           disabled={isLoading}
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+            <span className="absolute top-0 right-0 h-5 w-5 text-xs bg-primary text-primary-foreground rounded-full flex items-center justify-center transform translate-x-1/3 -translate-y-1/3">
               {unreadCount}
             </span>
           )}
@@ -171,55 +213,119 @@ export function NotificationsDropdown() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={markAllAsRead}
+              onClick={handleMarkAllAsRead}
               className="text-xs"
             >
               Mark all as read
             </Button>
           )}
         </div>
-        {notifications.length === 0 ? (
+
+        {groups.length === 0 && notifications.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
             No notifications
           </div>
         ) : (
-          notifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={cn(
-                "flex items-start gap-4 p-4 cursor-pointer hover:bg-accent",
-                !notification.read && "bg-accent/50"
-              )}
-              onClick={() => handleNotificationClick(notification)}
-            >
-              <div className="flex-1 space-y-1">
-                <p
-                  className={cn(
-                    "text-sm",
-                    !notification.read && "font-medium"
-                  )}
+          <>
+            {/* Grouped notifications */}
+            {groups.map((group) => (
+              <div key={group.id} className="border-b last:border-b-0">
+                <button
+                  className="w-full flex items-center justify-between p-2 hover:bg-accent"
+                  onClick={() => toggleGroup(group.id)}
                 >
-                  {notification.title}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {notification.message}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(notification.createdAt), {
-                    addSuffix: true,
-                  })}
-                </p>
+                  <span className="text-sm font-medium">
+                    {group.category} ({group.notifications.length})
+                  </span>
+                  {expandedGroups.has(group.id) ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+                {expandedGroups.has(group.id) && (
+                  <div className="bg-accent/50">
+                    {group.notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={cn(
+                          "flex items-start gap-4 p-4 cursor-pointer hover:bg-accent",
+                          !notification.read && "bg-accent/50"
+                        )}
+                        onClick={() => handleNotificationClick(notification.id)}
+                      >
+                        <div className="flex-1 space-y-1">
+                          <p
+                            className={cn(
+                              "text-sm",
+                              !notification.read && "font-medium"
+                            )}
+                          >
+                            {notification.title}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(notification.createdAt), {
+                              addSuffix: true,
+                            })}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => handleDismiss(e, notification.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={(e) => handleDismiss(e, notification)}
+            ))}
+
+            {/* Ungrouped notifications */}
+            {notifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={cn(
+                  "flex items-start gap-4 p-4 cursor-pointer hover:bg-accent",
+                  !notification.read && "bg-accent/50"
+                )}
+                onClick={() => handleNotificationClick(notification.id)}
               >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))
+                <div className="flex-1 space-y-1">
+                  <p
+                    className={cn(
+                      "text-sm",
+                      !notification.read && "font-medium"
+                    )}
+                  >
+                    {notification.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {notification.message}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(notification.createdAt), {
+                      addSuffix: true,
+                    })}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => handleDismiss(e, notification.id)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

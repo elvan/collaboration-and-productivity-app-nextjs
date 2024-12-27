@@ -5,28 +5,88 @@ import { trackNotification } from "@/lib/analytics"
 
 interface NotificationData {
   type: string
+  category: string
+  priority?: "high" | "normal" | "low"
   title: string
   message: string
   userId: string
   activityId?: string
+  groupId?: string
+  metadata?: Record<string, any>
+}
+
+interface NotificationGroup {
+  id: string
+  category: string
+  notifications: Array<{
+    id: string
+    title: string
+    message: string
+    createdAt: Date
+    read: boolean
+    metadata?: Record<string, any>
+  }>
 }
 
 export async function createNotification({
   type,
+  category,
+  priority = "normal",
   title,
   message,
   userId,
   activityId,
+  groupId,
+  metadata,
 }: NotificationData) {
+  // Try to find an existing group for the notification
+  let effectiveGroupId = groupId
+  if (!effectiveGroupId && metadata?.projectId) {
+    // Find the most recent group for this project and category
+    const recentGroup = await prisma.notification.findFirst({
+      where: {
+        userId,
+        category,
+        groupId: { not: null },
+        metadata: {
+          path: ["projectId"],
+          equals: metadata.projectId,
+        },
+        createdAt: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    })
+    if (recentGroup) {
+      effectiveGroupId = recentGroup.groupId
+    }
+  }
+
+  // If no group found, create a new one
+  if (!effectiveGroupId) {
+    effectiveGroupId = type + "_" + Date.now()
+  }
+
+  // Get the next order in the group
+  const lastInGroup = await prisma.notification.findFirst({
+    where: { groupId: effectiveGroupId },
+    orderBy: { groupOrder: "desc" },
+  })
+  const groupOrder = (lastInGroup?.groupOrder ?? 0) + 1
+
   const notification = await prisma.notification.create({
     data: {
       type,
+      category,
+      priority,
       title,
       message,
-      user: { connect: { id: userId } },
-      ...(activityId && {
-        activity: { connect: { id: activityId } },
-      }),
+      userId,
+      activityId,
+      groupId: effectiveGroupId,
+      groupOrder,
+      metadata: metadata || {},
     },
   })
 
@@ -38,10 +98,57 @@ export async function createNotification({
     metadata: {
       notificationId: notification.id,
       notificationType: type,
+      category,
+      groupId: effectiveGroupId,
     },
   })
 
   return notification
+}
+
+export async function getGroupedNotifications(userId: string) {
+  const notifications = await prisma.notification.findMany({
+    where: {
+      userId,
+      dismissed: false,
+    },
+    orderBy: [
+      { priority: "desc" },
+      { createdAt: "desc" },
+      { groupOrder: "desc" },
+    ],
+  })
+
+  // Group notifications
+  const groups: Record<string, NotificationGroup> = {}
+  const ungrouped: typeof notifications = []
+
+  notifications.forEach((notification) => {
+    if (notification.groupId) {
+      if (!groups[notification.groupId]) {
+        groups[notification.groupId] = {
+          id: notification.groupId,
+          category: notification.category,
+          notifications: [],
+        }
+      }
+      groups[notification.groupId].notifications.push({
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        createdAt: notification.createdAt,
+        read: notification.read,
+        metadata: notification.metadata as Record<string, any>,
+      })
+    } else {
+      ungrouped.push(notification)
+    }
+  })
+
+  return {
+    groups: Object.values(groups),
+    ungrouped,
+  }
 }
 
 export async function createActivityNotification(
@@ -120,10 +227,12 @@ export async function createActivityNotification(
 
     await createNotification({
       type: "activity",
+      category: "project",
       title,
       message,
       userId: memberId,
       activityId: activity.id,
+      metadata: { projectId: activity.projectId },
     })
   }
 

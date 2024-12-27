@@ -152,19 +152,28 @@ model Activity {
 
 model Notification {
   id          String    @id @default(cuid())
-  type        String    // activity, mention, system
+  type        String    // "activity", "mention", "system", etc.
+  category    String    // "project", "task", "member", "system"
+  priority    String    @default("normal") // "high", "normal", "low"
+  groupId     String?   // For grouping related notifications
+  groupOrder  Int?      // Order within group
   title       String
   message     String
   read        Boolean   @default(false)
-  activityId  String?
-  activity    Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dismissed   Boolean   @default(false)
+  metadata    Json?     // Additional context
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  userId      String
+  activityId  String?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity    Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
 
   @@index([userId])
-  @@index([activityId])
+  @@index([type])
+  @@index([category])
+  @@index([groupId])
+  @@index([createdAt])
 }
 
 model NotificationPreference {
