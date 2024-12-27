@@ -510,3 +510,44 @@ model ABTestEvent {
   @@index([event])
   @@index([createdAt])
 }
+
+model ScheduledNotification {
+  id            String   @id @default(cuid())
+  templateId    String
+  recipients    Json     // Array of user IDs or criteria
+  schedule      Json     // Schedule configuration (one-time, recurring)
+  data          Json?    // Template data/variables
+  status        String   // pending, processing, completed, failed, cancelled
+  lastRunAt     DateTime?
+  nextRunAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String
+  
+  template      NotificationTemplate @relation(fields: [templateId], references: [id])
+  createdBy     User                @relation(fields: [createdById], references: [id])
+
+  @@index([templateId])
+  @@index([createdById])
+  @@index([status])
+  @@index([nextRunAt])
+}
+
+model RecurringSchedule {
+  id            String   @id @default(cuid())
+  type          String   // daily, weekly, monthly
+  time          String   // HH:mm format
+  days          Json?    // Array of days for weekly/monthly
+  timezone      String   // User's timezone
+  startDate     DateTime
+  endDate       DateTime?
+  lastRunAt     DateTime?
+  nextRunAt     DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+  @@index([nextRunAt])
+}
