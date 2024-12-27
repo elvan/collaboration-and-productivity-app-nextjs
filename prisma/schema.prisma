@@ -458,6 +458,8 @@ model NotificationTemplate {
   
   versions      NotificationTemplateVersion[]
   notifications Notification[]
+  analytics     TemplateAnalytics[]
+  performance   TemplatePerformance[]
 
   @@index([type])
   @@index([createdById])
@@ -563,4 +565,48 @@ model RecurringSchedule {
   @@index([type])
   @@index([isActive])
   @@index([nextRunAt])
+}
+
+model TemplateAnalytics {
+  id            String   @id @default(cuid())
+  templateId    String
+  event         String   // sent, delivered, read, clicked, converted
+  metadata      Json?    // Additional event data
+  userId        String?  // User who triggered the event
+  timestamp     DateTime @default(now())
+
+  template      NotificationTemplate @relation(fields: [templateId], references: [id])
+  user          User?               @relation(fields: [userId], references: [id])
+
+  @@index([templateId])
+  @@index([userId])
+  @@index([event])
+  @@index([timestamp])
+}
+
+model TemplatePerformance {
+  id                String   @id @default(cuid())
+  templateId        String
+  period            String   // daily, weekly, monthly
+  startDate         DateTime
+  endDate           DateTime
+  sentCount         Int      @default(0)
+  deliveredCount    Int      @default(0)
+  readCount         Int      @default(0)
+  clickCount        Int      @default(0)
+  conversionCount   Int      @default(0)
+  deliveryRate      Float    @default(0)
+  readRate          Float    @default(0)
+  clickRate         Float    @default(0)
+  conversionRate    Float    @default(0)
+  averageReadTime   Float?   // In seconds
+  metadata          Json?    // Additional metrics
+
+  template          NotificationTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([templateId, period, startDate])
+  @@index([templateId])
+  @@index([period])
+  @@index([startDate])
+  @@index([endDate])
 }
