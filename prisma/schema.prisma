@@ -173,6 +173,11 @@ model Task {
   parentId    String?
   assigneeId  String?
   createdById String
+  typeId      String?
+  type        TaskType? @relation(fields: [typeId], references: [id])
+  statusId    String?
+  status      TaskStatus? @relation(fields: [statusId], references: [id])
+  customFields Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -197,6 +202,8 @@ model Task {
   @@index([status])
   @@index([priority])
   @@index([dueDate])
+  @@index([typeId])
+  @@index([statusId])
 }
 
 model TaskList {
@@ -940,21 +947,55 @@ model Attachment {
 }
 
 model CustomField {
-  id          String   @id @default(cuid())
-  name        String
-  type        String   // text, number, date, select, multiselect, user
-  options     Json?    // For select/multiselect fields
-  required    Boolean  @default(false)
-  projectId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(cuid())
+  name         String
+  type         String
+  description  String?
+  required     Boolean   @default(false)
+  options      Json?
+  defaultValue Json?
+  metadata     Json?
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  values      CustomFieldValue[]
-
-  @@unique([name, projectId])
   @@index([projectId])
+}
+
+model TaskType {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  fields      Json
+  metadata    Json?
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId])
+}
+
+model TaskStatus {
+  id          String    @id @default(cuid())
+  name        String
+  color       String
+  description String?
+  type        String
+  order       Int
+  metadata    Json?
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([projectId])
+  @@index([order])
 }
 
 model CustomFieldValue {
@@ -962,12 +1003,10 @@ model CustomFieldValue {
   value         Json
   taskId        String
   customFieldId String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
   task         Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
   customField  CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([taskId, customFieldId])
   @@index([taskId])

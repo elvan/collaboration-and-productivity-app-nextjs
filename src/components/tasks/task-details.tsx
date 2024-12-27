@@ -8,6 +8,9 @@ import { Card } from "@/components/ui/card"
 import { Icons } from "@/components/icons"
 import { useTaskDetails } from "@/hooks/use-task-details"
 import { Skeleton } from "@/components/ui/skeleton"
+import { TaskTypeSelector } from "./task-type-selector"
+import { TaskStatusSelector } from "./task-status-selector"
+import { CustomFieldEditor } from "./custom-field-editor"
 
 interface TaskDetailsProps {
   taskId: string
@@ -15,7 +18,7 @@ interface TaskDetailsProps {
 
 export function TaskDetails({ taskId }: TaskDetailsProps) {
   const { data: session } = useSession()
-  const [activeTab, setActiveTab] = useState("comments")
+  const [activeTab, setActiveTab] = useState("details")
   const [activityFilter, setActivityFilter] = useState("all")
 
   const {
@@ -23,12 +26,18 @@ export function TaskDetails({ taskId }: TaskDetailsProps) {
     comments,
     activities,
     activityStats,
+    taskTypes,
+    taskStatuses,
+    customFields,
     isLoading,
     createComment,
     updateComment,
     deleteComment,
     addReaction,
     removeReaction,
+    updateTaskType,
+    updateTaskStatus,
+    updateCustomFields,
   } = useTaskDetails(taskId)
 
   if (isLoading) {
@@ -53,6 +62,9 @@ export function TaskDetails({ taskId }: TaskDetailsProps) {
     )
   }
 
+  const selectedType = taskTypes?.find((type) => type.id === task.typeId)
+  const customFieldValues = task.customFields ? JSON.parse(task.customFields as string) : {}
+
   return (
     <Card className="p-6">
       <Tabs
@@ -62,6 +74,10 @@ export function TaskDetails({ taskId }: TaskDetailsProps) {
       >
         <div className="flex items-center justify-between">
           <TabsList>
+            <TabsTrigger value="details" className="space-x-2">
+              <Icons.layout className="h-4 w-4" />
+              <span>Details</span>
+            </TabsTrigger>
             <TabsTrigger value="comments" className="space-x-2">
               <Icons.messageSquare className="h-4 w-4" />
               <span>Comments</span>
@@ -72,6 +88,45 @@ export function TaskDetails({ taskId }: TaskDetailsProps) {
             </TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="details" className="space-y-6">
+          <div className="grid gap-6">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <TaskTypeSelector
+                  taskTypes={taskTypes || []}
+                  value={task.typeId}
+                  onChange={updateTaskType}
+                />
+              </div>
+              <div className="flex-1">
+                <TaskStatusSelector
+                  statuses={taskStatuses || []}
+                  value={task.statusId}
+                  onChange={updateTaskStatus}
+                />
+              </div>
+            </div>
+
+            {selectedType?.fields && (
+              <div className="space-y-6">
+                {selectedType.fields.map((field) => (
+                  <CustomFieldEditor
+                    key={field.id}
+                    field={field}
+                    value={customFieldValues[field.id]}
+                    onChange={(value) =>
+                      updateCustomFields({
+                        [field.id]: value,
+                      })
+                    }
+                    users={[]}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         <TabsContent value="comments" className="space-y-4">
           <CommentList
