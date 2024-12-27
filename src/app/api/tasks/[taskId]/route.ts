@@ -1,67 +1,70 @@
-import { getServerSession } from "next-auth"
 import { NextResponse } from "next/server"
-import { z } from "zod"
+import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { createActivity } from "@/lib/activity"
+import * as z from "zod"
+import {
+  getTask,
+  updateTask,
+  deleteTask,
+  assignTask,
+  updateTaskStatus,
+  updateTaskPriority,
+  TaskUpdateInput,
+} from "@/lib/tasks"
 
-const routeContextSchema = z.object({
-  params: z.object({
-    taskId: z.string(),
-  }),
+const taskUpdateSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  description: z.string().optional(),
+  status: z.string().optional(),
+  priority: z.string().optional(),
+  dueDate: z.string().optional().nullable(),
+  assigneeId: z.string().optional().nullable(),
 })
 
-export async function DELETE(
+export async function GET(
   req: Request,
-  context: z.infer<typeof routeContextSchema>
+  { params }: { params: { taskId: string } }
 ) {
   try {
-    const { params } = routeContextSchema.parse(context)
-
     const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 403 })
+    if (!session?.user) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // Check if user is a member of the project that contains this task
-    const task = await prisma.task.findFirst({
-      where: {
-        id: params.taskId,
-        project: {
-          OR: [
-            { ownerId: session.user.id },
-            { members: { some: { id: session.user.id } } },
-          ],
-        },
-      },
-      include: {
-        project: true,
-      },
-    })
-
+    const task = await getTask(params.taskId)
     if (!task) {
-      return new NextResponse("Not found", { status: 404 })
+      return new NextResponse("Task not found", { status: 404 })
     }
 
-    await prisma.task.delete({
-      where: {
-        id: params.taskId,
-      },
-    })
+    return NextResponse.json(task)
+  } catch (error) {
+    return new NextResponse(null, { status: 500 })
+  }
+}
 
-    // Create activity for task deletion
-    await createActivity(
-      "task_deleted",
+export async function PATCH(
+  req: Request,
+  { params }: { params: { taskId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const json = await req.json()
+    const body = taskUpdateSchema.parse(json)
+
+    const task = await updateTask(
+      params.taskId,
       {
-        taskTitle: task.title,
-        taskId: task.id,
-      },
-      task.projectId,
+        ...body,
+        dueDate: body.dueDate ? new Date(body.dueDate) : null,
+      } as TaskUpdateInput,
       session.user.id
     )
 
-    return new NextResponse(null, { status: 204 })
+    return NextResponse.json(task)
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new NextResponse(JSON.stringify(error.issues), { status: 422 })
@@ -71,106 +74,55 @@ export async function DELETE(
   }
 }
 
-export async function PATCH(
+export async function DELETE(
   req: Request,
-  context: z.infer<typeof routeContextSchema>
+  { params }: { params: { taskId: string } }
 ) {
   try {
-    const { params } = routeContextSchema.parse(context)
-
     const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
 
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 403 })
+    const task = await deleteTask(params.taskId, session.user.id)
+    return NextResponse.json(task)
+  } catch (error) {
+    return new NextResponse(null, { status: 500 })
+  }
+}
+
+// PUT /api/tasks/[taskId]/assign
+export async function PUT(
+  req: Request,
+  { params }: { params: { taskId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return new NextResponse("Unauthorized", { status: 401 })
     }
 
     const json = await req.json()
-    const body = z.object({
-      title: z.string().min(1).optional(),
-      description: z.string().optional(),
-      status: z.enum(["in_progress", "completed", "cancelled"]).optional(),
-      priority: z.enum(["low", "medium", "high"]).optional(),
-      assignedToId: z.string().optional(),
-      dueDate: z.string().datetime().optional(),
-    }).parse(json)
+    const { action, value } = json
 
-    // Check if user is a member of the project that contains this task
-    const task = await prisma.task.findFirst({
-      where: {
-        id: params.taskId,
-        project: {
-          OR: [
-            { ownerId: session.user.id },
-            { members: { some: { id: session.user.id } } },
-          ],
-        },
-      },
-      include: {
-        project: true,
-      },
-    })
+    let task
 
-    if (!task) {
-      return new NextResponse("Not found", { status: 404 })
+    switch (action) {
+      case "assign":
+        task = await assignTask(params.taskId, value, session.user.id)
+        break
+      case "status":
+        task = await updateTaskStatus(params.taskId, value, session.user.id)
+        break
+      case "priority":
+        task = await updateTaskPriority(params.taskId, value, session.user.id)
+        break
+      default:
+        return new NextResponse("Invalid action", { status: 400 })
     }
 
-    const updatedTask = await prisma.task.update({
-      where: {
-        id: params.taskId,
-      },
-      data: {
-        ...body,
-        dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
-        assignedTo: body.assignedToId
-          ? { connect: { id: body.assignedToId } }
-          : undefined,
-      },
-      include: {
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-      },
-    })
-
-    // Create activity for task update
-    if (body.status === "completed") {
-      await createActivity(
-        "task_completed",
-        {
-          taskTitle: updatedTask.title,
-          taskId: updatedTask.id,
-        },
-        task.projectId,
-        session.user.id
-      )
-    } else if (body.assignedToId && body.assignedToId !== task.assigneeId) {
-      const assignee = await prisma.user.findUnique({
-        where: { id: body.assignedToId },
-        select: { name: true, email: true },
-      })
-      await createActivity(
-        "task_assigned",
-        {
-          taskTitle: updatedTask.title,
-          taskId: updatedTask.id,
-          assigneeName: assignee?.name || assignee?.email,
-          assigneeId: body.assignedToId,
-        },
-        task.projectId,
-        session.user.id
-      )
-    }
-
-    return NextResponse.json(updatedTask)
+    return NextResponse.json(task)
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return new NextResponse(JSON.stringify(error.issues), { status: 422 })
-    }
-
     return new NextResponse(null, { status: 500 })
   }
 }
