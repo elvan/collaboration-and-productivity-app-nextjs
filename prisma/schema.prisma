@@ -460,6 +460,7 @@ model NotificationTemplate {
   notifications Notification[]
   analytics     TemplateAnalytics[]
   performance   TemplatePerformance[]
+  campaigns     Campaign[]
 
   @@index([type])
   @@index([createdById])
@@ -609,4 +610,72 @@ model TemplatePerformance {
   @@index([period])
   @@index([startDate])
   @@index([endDate])
+}
+
+model Campaign {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  status        String   // draft, scheduled, active, paused, completed
+  templateId    String
+  audience      Json     // Target audience criteria
+  schedule      Json     // Campaign schedule configuration
+  metadata      Json?    // Additional campaign settings
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String
+
+  template      NotificationTemplate @relation(fields: [templateId], references: [id])
+  createdBy     User                @relation(fields: [createdById], references: [id])
+  metrics       CampaignMetrics?
+  events        CampaignEvent[]
+
+  @@index([templateId])
+  @@index([createdById])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model CampaignMetrics {
+  id                String   @id @default(cuid())
+  campaignId        String   @unique
+  targetAudience    Int      @default(0)
+  sentCount         Int      @default(0)
+  deliveredCount    Int      @default(0)
+  readCount         Int      @default(0)
+  clickCount        Int      @default(0)
+  conversionCount   Int      @default(0)
+  bounceCount       Int      @default(0)
+  optOutCount       Int      @default(0)
+  deliveryRate      Float    @default(0)
+  readRate          Float    @default(0)
+  clickRate         Float    @default(0)
+  conversionRate    Float    @default(0)
+  bounceRate        Float    @default(0)
+  optOutRate        Float    @default(0)
+  lastUpdated       DateTime @default(now())
+
+  campaign          Campaign @relation(fields: [campaignId], references: [id])
+
+  @@index([campaignId])
+}
+
+model CampaignEvent {
+  id            String   @id @default(cuid())
+  campaignId    String
+  userId        String?
+  event         String   // sent, delivered, read, clicked, converted, bounced, optedOut
+  metadata      Json?    // Additional event data
+  timestamp     DateTime @default(now())
+
+  campaign      Campaign @relation(fields: [campaignId], references: [id])
+  user          User?    @relation(fields: [userId], references: [id])
+
+  @@index([campaignId])
+  @@index([userId])
+  @@index([event])
+  @@index([timestamp])
 }
