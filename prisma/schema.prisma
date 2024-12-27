@@ -93,6 +93,7 @@ model Project {
   members     User[]    @relation("ProjectMembers")
   tasks       Task[]
   invitations ProjectInvitation[]
+  activities  Activity[]
 
   @@index([workspaceId])
   @@index([ownerId])
@@ -131,4 +132,18 @@ model ProjectInvitation {
   @@index([projectId])
   @@index([invitedById])
   @@index([invitedUserId])
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  type        String   // member_added, member_removed, task_created, task_completed, etc.
+  data        Json     // Additional data specific to the activity type
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([userId])
 }

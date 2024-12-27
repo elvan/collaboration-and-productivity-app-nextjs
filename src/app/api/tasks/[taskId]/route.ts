@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createActivity } from "@/lib/activity"
 
 const routeContextSchema = z.object({
   params: z.object({
@@ -34,6 +35,9 @@ export async function DELETE(
           ],
         },
       },
+      include: {
+        project: true,
+      },
     })
 
     if (!task) {
@@ -45,6 +49,17 @@ export async function DELETE(
         id: params.taskId,
       },
     })
+
+    // Create activity for task deletion
+    await createActivity(
+      "task_deleted",
+      {
+        taskTitle: task.title,
+        taskId: task.id,
+      },
+      task.projectId,
+      session.user.id
+    )
 
     return new NextResponse(null, { status: 204 })
   } catch (error) {
@@ -90,6 +105,9 @@ export async function PATCH(
           ],
         },
       },
+      include: {
+        project: true,
+      },
     })
 
     if (!task) {
@@ -117,6 +135,35 @@ export async function PATCH(
         },
       },
     })
+
+    // Create activity for task update
+    if (body.status === "completed") {
+      await createActivity(
+        "task_completed",
+        {
+          taskTitle: updatedTask.title,
+          taskId: updatedTask.id,
+        },
+        task.projectId,
+        session.user.id
+      )
+    } else if (body.assignedToId && body.assignedToId !== task.assigneeId) {
+      const assignee = await prisma.user.findUnique({
+        where: { id: body.assignedToId },
+        select: { name: true, email: true },
+      })
+      await createActivity(
+        "task_assigned",
+        {
+          taskTitle: updatedTask.title,
+          taskId: updatedTask.id,
+          assigneeName: assignee?.name || assignee?.email,
+          assigneeId: body.assignedToId,
+        },
+        task.projectId,
+        session.user.id
+      )
+    }
 
     return NextResponse.json(updatedTask)
   } catch (error) {

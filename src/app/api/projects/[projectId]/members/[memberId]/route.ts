@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createActivity } from "@/lib/activity"
 
 const routeContextSchema = z.object({
   params: z.object({
@@ -41,6 +42,12 @@ export async function DELETE(
       return new NextResponse("Cannot remove project owner", { status: 400 })
     }
 
+    // Get member details for activity
+    const member = await prisma.user.findUnique({
+      where: { id: params.memberId },
+      select: { name: true, email: true },
+    })
+
     // Remove member from project
     await prisma.project.update({
       where: {
@@ -54,6 +61,17 @@ export async function DELETE(
         },
       },
     })
+
+    // Create activity
+    await createActivity(
+      "member_removed",
+      {
+        memberName: member?.name || member?.email,
+        memberId: params.memberId,
+      },
+      params.projectId,
+      session.user.id
+    )
 
     return new NextResponse(null, { status: 204 })
   } catch (error) {

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createActivity } from "@/lib/activity"
 
 const routeContextSchema = z.object({
   params: z.object({
@@ -85,6 +86,17 @@ export async function POST(
         },
       },
     })
+
+    // Create activity for adding member
+    await createActivity(
+      "member_added",
+      {
+        memberName: invitedUser.name || invitedUser.email,
+        memberId: invitedUser.id,
+      },
+      params.projectId,
+      session.user.id
+    )
 
     // Create project invitation
     const invitation = await prisma.projectInvitation.create({

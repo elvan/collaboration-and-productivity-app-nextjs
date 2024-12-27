@@ -54,8 +54,25 @@ async function getProject(projectId: string, userId: string) {
         select: {
           id: true,
           name: true,
-          image: true
+          email: true,
+          image: true,
+          createdAt: true
         }
+      },
+      activities: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              image: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 20
       }
     }
   })
