@@ -23,6 +23,8 @@ model User {
   tasks         Task[]
   projects      Project[]    @relation("ProjectMembers")
   ownedProjects Project[]    @relation("ProjectOwner")
+  sentInvitations ProjectInvitation[] @relation("SentInvitations")
+  receivedInvitations ProjectInvitation[] @relation("ReceivedInvitations")
 }
 
 model Account {
@@ -90,6 +92,7 @@ model Project {
   owner       User      @relation("ProjectOwner", fields: [ownerId], references: [id])
   members     User[]    @relation("ProjectMembers")
   tasks       Task[]
+  invitations ProjectInvitation[]
 
   @@index([workspaceId])
   @@index([ownerId])
@@ -111,4 +114,21 @@ model Task {
 
   @@index([projectId])
   @@index([assigneeId])
+}
+
+model ProjectInvitation {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invitedById   String
+  invitedBy     User    @relation("SentInvitations", fields: [invitedById], references: [id])
+  invitedUserId String
+  invitedUser   User    @relation("ReceivedInvitations", fields: [invitedUserId], references: [id])
+  status        String   @default("pending") // pending, accepted, declined
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([invitedById])
+  @@index([invitedUserId])
 }
