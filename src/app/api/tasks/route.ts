@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth"
 import * as z from "zod"
 import {
   createTask,
-  getTasks,
+  filterTasks,
   TaskCreateInput,
 } from "@/lib/tasks"
 
@@ -60,24 +60,55 @@ export async function GET(req: Request) {
       return new NextResponse("Project ID is required", { status: 400 })
     }
 
-    const status = searchParams.get("status") || undefined
-    const priority = searchParams.get("priority") || undefined
-    const assigneeId = searchParams.get("assigneeId") || undefined
+    // Parse filter parameters
+    const status = searchParams.getAll("status")
+    const priority = searchParams.getAll("priority")
+    const assigneeId = searchParams.getAll("assigneeId")
+    const tags = searchParams.getAll("tags")
     const search = searchParams.get("search") || undefined
     const sortBy = searchParams.get("sortBy") || undefined
     const sortOrder = (searchParams.get("sortOrder") || "desc") as "asc" | "desc"
+    const page = parseInt(searchParams.get("page") || "1")
+    const pageSize = parseInt(searchParams.get("pageSize") || "20")
 
-    const result = await getTasks(projectId, {
+    // Parse date filters
+    const dueDateStart = searchParams.get("dueDateStart")
+    const dueDateEnd = searchParams.get("dueDateEnd")
+    const dueDate = dueDateStart || dueDateEnd ? {
+      start: dueDateStart ? new Date(dueDateStart) : undefined,
+      end: dueDateEnd ? new Date(dueDateEnd) : undefined,
+    } : undefined
+
+    // Parse custom fields
+    const customFieldsParam = searchParams.get("customFields")
+    const customFields = customFieldsParam ? JSON.parse(customFieldsParam) : undefined
+
+    // Parse dependencies
+    const dependencyType = searchParams.get("dependencyType")
+    const dependencyTaskId = searchParams.get("dependencyTaskId")
+    const dependencies = dependencyType && dependencyTaskId ? {
+      type: dependencyType,
+      taskId: dependencyTaskId,
+    } : undefined
+
+    const result = await filterTasks(projectId, {
       status,
       priority,
       assigneeId,
+      dueDate,
+      tags,
       search,
+      customFields,
+      dependencies,
       sortBy,
       sortOrder,
+      page,
+      pageSize,
     })
 
     return NextResponse.json(result)
   } catch (error) {
+    console.error("Error filtering tasks:", error)
     return new NextResponse(null, { status: 500 })
   }
 }
