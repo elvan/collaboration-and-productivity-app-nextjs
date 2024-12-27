@@ -32,6 +32,15 @@ interface NotificationGroup {
   }>
 }
 
+interface NotificationFilters {
+  categories?: string[]
+  priority?: string[]
+  read?: boolean
+  startDate?: Date
+  endDate?: Date
+  search?: string
+}
+
 export async function createNotificationFromTemplate(
   templateType: string,
   data: NotificationTemplateData,
@@ -302,6 +311,90 @@ export async function getGroupedNotifications(userId: string) {
   return {
     groups: Object.values(groups),
     ungrouped,
+  }
+}
+
+export async function getFilteredNotifications(
+  userId: string,
+  filters: NotificationFilters = {},
+  page = 1,
+  pageSize = 20
+) {
+  const where: any = { userId }
+
+  // Apply filters
+  if (filters.categories?.length) {
+    where.category = { in: filters.categories }
+  }
+  if (filters.priority?.length) {
+    where.priority = { in: filters.priority }
+  }
+  if (filters.read !== undefined) {
+    where.read = filters.read
+  }
+  if (filters.startDate) {
+    where.createdAt = { ...where.createdAt, gte: filters.startDate }
+  }
+  if (filters.endDate) {
+    where.createdAt = { ...where.createdAt, lte: filters.endDate }
+  }
+  if (filters.search) {
+    where.OR = [
+      { title: { contains: filters.search, mode: "insensitive" } },
+      { message: { contains: filters.search, mode: "insensitive" } },
+    ]
+  }
+
+  // Get total count for pagination
+  const total = await prisma.notification.count({ where })
+
+  // Get notifications with pagination
+  const notifications = await prisma.notification.findMany({
+    where,
+    orderBy: [
+      { priority: "desc" },
+      { createdAt: "desc" },
+      { groupOrder: "desc" },
+    ],
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+  })
+
+  // Group notifications
+  const groups: Record<string, NotificationGroup> = {}
+  const ungrouped: typeof notifications = []
+
+  notifications.forEach((notification) => {
+    if (notification.groupId) {
+      if (!groups[notification.groupId]) {
+        groups[notification.groupId] = {
+          id: notification.groupId,
+          category: notification.category,
+          notifications: [],
+        }
+      }
+      groups[notification.groupId].notifications.push({
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        createdAt: notification.createdAt,
+        read: notification.read,
+        metadata: notification.metadata as Record<string, any>,
+      })
+    } else {
+      ungrouped.push(notification)
+    }
+  })
+
+  return {
+    groups: Object.values(groups),
+    ungrouped,
+    pagination: {
+      total,
+      pages: Math.ceil(total / pageSize),
+      current: page,
+      pageSize,
+    },
   }
 }
 
