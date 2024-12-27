@@ -29,6 +29,8 @@ model User {
   notificationPreferences NotificationPreference[]
   pushSubscriptions PushSubscription[]
   notificationRateLimits NotificationRateLimit[]
+  createdTemplates NotificationTemplate[] @relation("CreatedTemplates")
+  updatedTemplates NotificationTemplate[] @relation("UpdatedTemplates")
 }
 
 model Account {
@@ -170,6 +172,7 @@ model Notification {
   activityId  String?
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   activity    Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  template    NotificationTemplate? @relation(fields: [id], references: [id])
 
   @@index([userId])
   @@index([type])
@@ -420,4 +423,49 @@ model BulkAction {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+model NotificationTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  type          String   // email, push, app
+  title         String
+  body          String
+  metadata      Json?    // Additional template data (icons, actions, etc)
+  variables     Json?    // List of variables used in the template
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String
+  updatedById   String?
+  
+  createdBy     User     @relation("CreatedTemplates", fields: [createdById], references: [id])
+  updatedBy     User?    @relation("UpdatedTemplates", fields: [updatedById], references: [id])
+  
+  versions      NotificationTemplateVersion[]
+  notifications Notification[]
+
+  @@index([type])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model NotificationTemplateVersion {
+  id            String   @id @default(cuid())
+  templateId    String
+  version       Int
+  title         String
+  body          String
+  metadata      Json?
+  variables     Json?
+  createdAt     DateTime @default(now())
+  createdById   String
+  
+  template      NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdBy     User                @relation(fields: [createdById], references: [id])
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@index([createdById])
 }
