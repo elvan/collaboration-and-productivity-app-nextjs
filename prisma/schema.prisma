@@ -401,3 +401,23 @@ model NotificationStats {
   @@index([date])
   @@index([channel])
 }
+
+model BulkAction {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // markAsRead, markAsUnread, dismiss, delete
+  status        String   // pending, processing, completed, failed
+  total         Int      @default(0)
+  processed     Int      @default(0)
+  failed        Int      @default(0)
+  filter        Json?    // Filter conditions for the bulk action
+  error         String?  // Error message if failed
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
