@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils"
 import { Bell } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { soundManager } from "@/lib/sounds"
+import { markNotificationAsRead, dismissNotification, trackNotificationClick } from "@/lib/notification"
+import { X } from "lucide-react"
 
 interface ExtendedNotification extends Notification {
   activity?: {
@@ -79,6 +81,44 @@ export function NotificationsDropdown() {
     }
   }
 
+  async function handleNotificationClick(notification: ExtendedNotification) {
+    try {
+      await markNotificationAsRead(notification.id)
+      await trackNotificationClick(notification.id)
+      
+      // Update local state
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notification.id ? { ...n, read: true } : n
+        )
+      )
+      setUnreadCount((prev) => Math.max(0, prev - 1))
+
+      // Close dropdown and navigate if there's a link
+      setIsOpen(false)
+      // Add navigation logic here based on notification type
+    } catch (error) {
+      console.error("Failed to handle notification click:", error)
+    }
+  }
+
+  async function handleDismiss(e: React.MouseEvent, notification: ExtendedNotification) {
+    e.stopPropagation()
+    try {
+      await dismissNotification(notification.id)
+      
+      // Update local state
+      setNotifications((prev) =>
+        prev.filter((n) => n.id !== notification.id)
+      )
+      if (!notification.read) {
+        setUnreadCount((prev) => Math.max(0, prev - 1))
+      }
+    } catch (error) {
+      console.error("Failed to dismiss notification:", error)
+    }
+  }
+
   React.useEffect(() => {
     if (isOpen) {
       fetchNotifications()
@@ -121,64 +161,66 @@ export function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[380px]">
-        <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Notifications</span>
+      <DropdownMenuContent
+        align="end"
+        className="w-[380px] max-h-[480px] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between px-4 py-2 border-b">
+          <h4 className="text-sm font-medium">Notifications</h4>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={markAllAsRead}
-              disabled={isLoading}
+              className="text-xs"
             >
               Mark all as read
             </Button>
           )}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <ScrollArea className="h-[300px]">
-          <DropdownMenuGroup>
-            {notifications.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                No notifications
-              </div>
-            ) : (
-              notifications.map((notification) => (
-                <DropdownMenuItem
-                  key={notification.id}
+        </div>
+        {notifications.length === 0 ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            No notifications
+          </div>
+        ) : (
+          notifications.map((notification) => (
+            <div
+              key={notification.id}
+              className={cn(
+                "flex items-start gap-4 p-4 cursor-pointer hover:bg-accent",
+                !notification.read && "bg-accent/50"
+              )}
+              onClick={() => handleNotificationClick(notification)}
+            >
+              <div className="flex-1 space-y-1">
+                <p
                   className={cn(
-                    "flex items-start gap-4 p-4",
-                    !notification.read && "bg-muted/50"
+                    "text-sm",
+                    !notification.read && "font-medium"
                   )}
                 >
-                  {notification.activity?.user && (
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage
-                        src={notification.activity.user.image || undefined}
-                      />
-                      <AvatarFallback>
-                        {notification.activity.user.name?.charAt(0) || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {notification.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(notification.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </p>
-                  </div>
-                </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuGroup>
-        </ScrollArea>
+                  {notification.title}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {notification.message}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(notification.createdAt), {
+                    addSuffix: true,
+                  })}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => handleDismiss(e, notification)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

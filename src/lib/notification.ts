@@ -1,6 +1,7 @@
 import { Activity, Project, User } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { sendActivityNotificationEmail } from "@/lib/email"
+import { trackNotification } from "@/lib/analytics"
 
 interface NotificationData {
   type: string
@@ -10,18 +11,37 @@ interface NotificationData {
   activityId?: string
 }
 
-export async function createNotification(data: NotificationData) {
-  return await prisma.notification.create({
+export async function createNotification({
+  type,
+  title,
+  message,
+  userId,
+  activityId,
+}: NotificationData) {
+  const notification = await prisma.notification.create({
     data: {
-      type: data.type,
-      title: data.title,
-      message: data.message,
-      user: { connect: { id: data.userId } },
-      ...(data.activityId && {
-        activity: { connect: { id: data.activityId } },
+      type,
+      title,
+      message,
+      user: { connect: { id: userId } },
+      ...(activityId && {
+        activity: { connect: { id: activityId } },
       }),
     },
   })
+
+  // Track notification sent
+  await trackNotification({
+    userId,
+    type: "notification",
+    action: "sent",
+    metadata: {
+      notificationId: notification.id,
+      notificationType: type,
+    },
+  })
+
+  return notification
 }
 
 export async function createActivityNotification(
@@ -112,10 +132,71 @@ export async function createActivityNotification(
 }
 
 export async function markNotificationAsRead(notificationId: string) {
-  return await prisma.notification.update({
+  const notification = await prisma.notification.update({
     where: { id: notificationId },
     data: { read: true },
+    include: { activity: true },
   })
+
+  // Track notification read
+  if (notification) {
+    await trackNotification({
+      userId: notification.userId,
+      projectId: notification.activity?.projectId,
+      type: "notification",
+      action: "read",
+      metadata: {
+        notificationId: notification.id,
+        notificationType: notification.type,
+      },
+    })
+  }
+
+  return notification
+}
+
+export async function dismissNotification(notificationId: string) {
+  const notification = await prisma.notification.update({
+    where: { id: notificationId },
+    data: { dismissed: true },
+    include: { activity: true },
+  })
+
+  // Track notification dismissed
+  if (notification) {
+    await trackNotification({
+      userId: notification.userId,
+      projectId: notification.activity?.projectId,
+      type: "notification",
+      action: "dismissed",
+      metadata: {
+        notificationId: notification.id,
+        notificationType: notification.type,
+      },
+    })
+  }
+
+  return notification
+}
+
+export async function trackNotificationClick(notificationId: string) {
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+    include: { activity: true },
+  })
+
+  if (notification) {
+    await trackNotification({
+      userId: notification.userId,
+      projectId: notification.activity?.projectId,
+      type: "notification",
+      action: "clicked",
+      metadata: {
+        notificationId: notification.id,
+        notificationType: notification.type,
+      },
+    })
+  }
 }
 
 export async function markAllNotificationsAsRead(userId: string) {

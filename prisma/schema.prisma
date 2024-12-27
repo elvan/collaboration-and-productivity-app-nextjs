@@ -183,3 +183,19 @@ model NotificationPreference {
   @@unique([userId])
   @@index([userId])
 }
+
+model NotificationMetric {
+  id          String   @id @default(cuid())
+  userId      String
+  projectId   String?
+  type        String   // "notification", "email", "digest"
+  action      String   // "sent", "read", "clicked", "dismissed"
+  timestamp   DateTime @default(now())
+  metadata    Json?    // Additional context like notification type, email type, etc.
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([timestamp])
+}
