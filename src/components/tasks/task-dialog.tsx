@@ -70,6 +70,7 @@ import {
 import { TaskDependencies } from "./task-dependencies"
 import { TaskComments } from "./task-comments"
 import { TaskAttachments } from "./task-attachments"
+import { TaskRelationships } from "./task-relationships"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const taskSchema = z.object({
@@ -143,6 +144,7 @@ export function TaskDialog({
   const [activeTab, setActiveTab] = useState("details")
   const [comments, setComments] = useState([])
   const [attachments, setAttachments] = useState([])
+  const [relationships, setRelationships] = useState([])
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
@@ -224,6 +226,14 @@ export function TaskDialog({
     // implement delete attachment logic
   }
 
+  const createTaskRelationship = () => {
+    // implement create task relationship logic
+  }
+
+  const deleteTaskRelationship = () => {
+    // implement delete task relationship logic
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -239,6 +249,7 @@ export function TaskDialog({
               <TabsList>
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
+                <TabsTrigger value="relationships">Relationships</TabsTrigger>
                 <TabsTrigger value="comments">Comments</TabsTrigger>
                 <TabsTrigger value="attachments">Attachments</TabsTrigger>
               </TabsList>
@@ -426,6 +437,16 @@ export function TaskDialog({
                   availableTasks={availableTasks}
                   onAddDependency={handleAddDependency}
                   onRemoveDependency={handleRemoveDependency}
+                />
+              </TabsContent>
+              <TabsContent value="relationships" className="space-y-4">
+                <TaskRelationships
+                  taskId={task.id}
+                  projectId={task.projectId}
+                  relationships={relationships}
+                  availableTasks={availableTasks}
+                  onCreateRelationship={createTaskRelationship}
+                  onDeleteRelationship={deleteTaskRelationship}
                 />
               </TabsContent>
               <TabsContent value="comments" className="space-y-4">

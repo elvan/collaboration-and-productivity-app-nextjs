@@ -20,7 +20,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { TaskDialog } from "./task-dialog"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, ChevronRight } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 
 interface Task {
@@ -36,6 +37,7 @@ interface Task {
     email: string
     image?: string | null
   } | null
+  children?: Task[]
 }
 
 interface TaskListProps {
@@ -44,6 +46,9 @@ interface TaskListProps {
   projectMembers: Array<{ id: string; name: string }>
   onDelete: (taskId: string) => Promise<void>
   onUpdate: (taskId: string, data: any) => Promise<void>
+  selectedTasks: string[]
+  onSelectTask: (taskId: string) => void
+  showHierarchy: boolean
 }
 
 export function TaskList({
@@ -52,6 +57,9 @@ export function TaskList({
   projectMembers,
   onDelete,
   onUpdate,
+  selectedTasks,
+  onSelectTask,
+  showHierarchy,
 }: TaskListProps) {
   const router = useRouter()
   const [editingTask, setEditingTask] = useState<Task | null>(null)
@@ -90,6 +98,101 @@ export function TaskList({
     }
   }
 
+  function renderTaskRow(task: Task, level: number = 0) {
+    return (
+      <>
+        <TableRow key={task.id}>
+          <TableCell>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={selectedTasks.includes(task.id)}
+                onCheckedChange={() => onSelectTask(task.id)}
+              />
+              <div className="flex flex-col" style={{ marginLeft: level * 24 }}>
+                <div className="flex items-center gap-2">
+                  {showHierarchy && task.children && task.children.length > 0 && (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                  <span className="font-medium">{task.title}</span>
+                </div>
+                {task.description && (
+                  <span className="text-sm text-muted-foreground">
+                    {task.description}
+                  </span>
+                )}
+              </div>
+            </div>
+          </TableCell>
+          <TableCell>
+            <Badge className={cn("capitalize", statusColors[task.status])}>
+              {task.status.replace("_", " ")}
+            </Badge>
+          </TableCell>
+          <TableCell>
+            <Badge className={cn("capitalize", priorityColors[task.priority])}>
+              {task.priority}
+            </Badge>
+          </TableCell>
+          <TableCell>
+            {task.assignee ? (
+              <div className="flex items-center gap-2">
+                <Avatar className="h-6 w-6">
+                  <AvatarImage
+                    src={task.assignee.image || ""}
+                    alt={task.assignee.name}
+                  />
+                  <AvatarFallback>
+                    {task.assignee.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm">{task.assignee.name}</span>
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">Unassigned</span>
+            )}
+          </TableCell>
+          <TableCell>
+            {task.dueDate ? (
+              <span className="text-sm">
+                {format(new Date(task.dueDate), "MMM d, yyyy")}
+              </span>
+            ) : (
+              <span className="text-sm text-muted-foreground">No date</span>
+            )}
+          </TableCell>
+          <TableCell>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditingTask(task)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-red-600"
+                  onClick={() => handleDelete(task.id)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </TableCell>
+        </TableRow>
+        {showHierarchy &&
+          task.children?.map((child) => renderTaskRow(child, level + 1))}
+      </>
+    )
+  }
+
   return (
     <>
       <div className="rounded-md border">
@@ -105,94 +208,7 @@ export function TaskList({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tasks.map((task) => (
-              <TableRow key={task.id}>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{task.title}</span>
-                    {task.description && (
-                      <span className="text-sm text-muted-foreground">
-                        {task.description}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    className={cn("capitalize", statusColors[task.status])}
-                  >
-                    {task.status.replace("_", " ")}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    className={cn("capitalize", priorityColors[task.priority])}
-                  >
-                    {task.priority}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {task.assignee ? (
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage
-                          src={task.assignee.image || ""}
-                          alt={task.assignee.name}
-                        />
-                        <AvatarFallback>
-                          {task.assignee.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">{task.assignee.name}</span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      Unassigned
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {task.dueDate ? (
-                    <span className="text-sm">
-                      {format(new Date(task.dueDate), "MMM d, yyyy")}
-                    </span>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">No date</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                      >
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => setEditingTask(task)}
-                      >
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-red-600"
-                        onClick={() => handleDelete(task.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+            {tasks.map((task) => renderTaskRow(task))}
           </TableBody>
         </Table>
       </div>

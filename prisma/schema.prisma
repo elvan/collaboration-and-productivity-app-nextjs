@@ -114,44 +114,50 @@ model Task {
   id          String   @id @default(cuid())
   title       String
   description String?
-  status      String
-  priority    String
-  startDate   DateTime?
+  status      String   @default("todo")
+  priority    String   @default("medium")
+  progress    Int      @default(0)
   dueDate     DateTime?
   assigneeId  String?
   projectId   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  labels      String[] @default([])
 
   // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignee    User?    @relation(fields: [assigneeId], references: [id])
-  project     Project  @relation(fields: [projectId], references: [id])
-  labels      Label[]
-  dependencies     TaskDependency[] @relation("DependentTask")
-  dependentTasks   TaskDependency[] @relation("Dependency")
-  customFields CustomFieldValue[]
-  comments     Comment[]
-  mentions     Mention[]
-  attachments  Attachment[]
-  emailLogs     EmailLog[]
+  comments    Comment[]
+  mentions    Mention[]
+  attachments Attachment[]
+  emailLogs   EmailLog[]
+  customFieldValues CustomFieldValue[]
+  outgoingRelationships TaskRelationship[] @relation("SourceTask")
+  incomingRelationships TaskRelationship[] @relation("TargetTask")
 
   @@index([projectId])
   @@index([assigneeId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
 }
 
-model TaskDependency {
-  id              String @id @default(cuid())
-  dependentTaskId String
-  dependencyId    String
-  createdAt       DateTime @default(now())
+model TaskRelationship {
+  id           String   @id @default(cuid())
+  type         String   // parent_child, blocks, depends_on, related_to
+  sourceTaskId String
+  targetTaskId String
+  metadata     Json?
+  createdAt    DateTime @default(now())
 
   // Relations
-  dependentTask   Task @relation("DependentTask", fields: [dependentTaskId], references: [id], onDelete: Cascade)
-  dependency      Task @relation("Dependency", fields: [dependencyId], references: [id], onDelete: Cascade)
+  sourceTask   Task     @relation("SourceTask", fields: [sourceTaskId], references: [id], onDelete: Cascade)
+  targetTask   Task     @relation("TargetTask", fields: [targetTaskId], references: [id], onDelete: Cascade)
 
-  @@unique([dependentTaskId, dependencyId])
-  @@index([dependentTaskId])
-  @@index([dependencyId])
+  @@unique([sourceTaskId, targetTaskId, type])
+  @@index([sourceTaskId])
+  @@index([targetTaskId])
+  @@index([type])
 }
 
 model ProjectInvitation {
@@ -954,7 +960,7 @@ model ActivityLog {
   userId        String
   workspaceId   String
 
-  user          User      @relation(fields: [userId], references: [id])
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace     Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])
