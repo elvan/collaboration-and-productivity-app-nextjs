@@ -461,10 +461,6 @@ model NotificationTemplate {
   analytics     TemplateAnalytics[]
   performance   TemplatePerformance[]
   campaigns     Campaign[]
-
-  @@index([type])
-  @@index([createdById])
-  @@index([updatedById])
 }
 
 model NotificationTemplateVersion {
@@ -678,4 +674,124 @@ model CampaignEvent {
   @@index([userId])
   @@index([event])
   @@index([timestamp])
+}
+
+model Webhook {
+  id            String   @id @default(cuid())
+  name          String
+  url           String
+  secret        String
+  events        String[] // Array of event types to trigger webhook
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String
+  workspaceId   String
+
+  createdBy     User      @relation(fields: [createdById], references: [id])
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  deliveries    WebhookDelivery[]
+
+  @@index([workspaceId])
+  @@index([createdById])
+  @@index([isActive])
+}
+
+model WebhookDelivery {
+  id            String   @id @default(cuid())
+  webhookId     String
+  event         String
+  payload       Json
+  response      Json?
+  statusCode    Int?
+  error         String?
+  attempts      Int      @default(0)
+  succeededAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  webhook       Webhook  @relation(fields: [webhookId], references: [id])
+
+  @@index([webhookId])
+  @@index([event])
+  @@index([succeededAt])
+}
+
+model Integration {
+  id            String   @id @default(cuid())
+  type          String   // e.g., "github", "slack", "jira"
+  name          String
+  config        Json
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String
+  workspaceId   String
+
+  createdBy     User      @relation(fields: [createdById], references: [id])
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([createdById])
+  @@index([type])
+  @@index([isActive])
+}
+
+model ActivityLog {
+  id            String   @id @default(cuid())
+  type          String   // e.g., "task.created", "comment.added"
+  action        String   // e.g., "created", "updated", "deleted"
+  entityType    String   // e.g., "task", "comment", "document"
+  entityId      String
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  userId        String
+  workspaceId   String
+
+  user          User      @relation(fields: [userId], references: [id])
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([type])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+}
+
+model Audit {
+  id            String   @id @default(cuid())
+  type          String   // e.g., "security", "data", "access"
+  action        String   // e.g., "login", "export", "permission_change"
+  description   String
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+  userId        String?
+  workspaceId   String
+
+  user          User?     @relation(fields: [userId], references: [id])
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([type])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model WorkspaceAnalytics {
+  id                String   @id @default(cuid())
+  workspaceId       String   @unique
+  activeUsers       Int      @default(0)
+  taskCount         Int      @default(0)
+  completedTasks    Int      @default(0)
+  documentCount     Int      @default(0)
+  commentCount      Int      @default(0)
+  storageUsed       BigInt   @default(0) // in bytes
+  lastUpdated       DateTime @default(now())
+
+  workspace         Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
 }
