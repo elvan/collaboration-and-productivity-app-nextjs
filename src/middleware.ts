@@ -1,37 +1,47 @@
-import { getToken } from "next-auth/jwt"
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { withAuth } from "next-auth/middleware";
+import { NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request })
-  const isAuthPage =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/register")
+export default withAuth(
+  function middleware(req) {
+    const token = req.nextauth.token;
+    const isAuth = !!token;
+    const isAuthPage =
+      req.nextUrl.pathname.startsWith("/login") ||
+      req.nextUrl.pathname.startsWith("/register");
 
-  if (isAuthPage) {
-    if (token) {
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    }
-    return null
-  }
-
-  if (!token) {
-    let from = request.nextUrl.pathname
-    if (request.nextUrl.search) {
-      from += request.nextUrl.search
+    if (isAuthPage) {
+      if (isAuth) {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
+      return null;
     }
 
-    return NextResponse.redirect(
-      new URL(`/login?from=${encodeURIComponent(from)}`, request.url)
-    )
-  }
-}
+    if (!isAuth) {
+      let from = req.nextUrl.pathname;
+      if (req.nextUrl.search) {
+        from += req.nextUrl.search;
+      }
 
+      return NextResponse.redirect(
+        new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
+      );
+    }
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token,
+    },
+  }
+);
+
+// Protect all routes except public ones
 export const config = {
   matcher: [
     "/dashboard/:path*",
     "/settings/:path*",
+    "/projects/:path*",
+    "/notifications/:path*",
     "/login",
     "/register",
   ],
-}
+};

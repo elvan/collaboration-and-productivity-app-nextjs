@@ -58,50 +58,57 @@ export function RegisterForm({ className, ...props }: RegisterFormProps) {
     <div className="grid gap-6" {...props}>
       <form onSubmit={onSubmit}>
         <div className="grid gap-4">
-          <div className="grid gap-1">
-            <Label htmlFor="name">Name</Label>
+          <div className="grid gap-2">
+            <Label htmlFor="name">Full Name</Label>
             <Input
               id="name"
-              placeholder="John Doe"
-              type="text"
               name="name"
-              autoCapitalize="none"
+              type="text"
+              autoCapitalize="words"
               autoComplete="name"
               autoCorrect="off"
+              placeholder="John Doe"
               disabled={isLoading}
               required
+              minLength={2}
             />
           </div>
-          <div className="grid gap-1">
+          <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
-              placeholder="name@example.com"
-              type="email"
               name="email"
+              type="email"
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect="off"
+              placeholder="name@example.com"
               disabled={isLoading}
               required
             />
           </div>
-          <div className="grid gap-1">
+          <div className="grid gap-2">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
-              placeholder="••••••••"
-              type="password"
               name="password"
+              type="password"
               autoComplete="new-password"
+              placeholder="••••••••"
               disabled={isLoading}
               required
+              minLength={8}
             />
+            <p className="text-xs text-muted-foreground">
+              Must be at least 8 characters long
+            </p>
           </div>
           {error && (
-            <p className="text-sm text-red-500">{error}</p>
+            <div className="text-sm text-red-500 dark:text-red-400">
+              {error}
+            </div>
           )}
-          <Button disabled={isLoading}>
+          <Button disabled={isLoading} className="w-full">
             {isLoading && (
               <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
             )}
@@ -109,6 +116,24 @@ export function RegisterForm({ className, ...props }: RegisterFormProps) {
           </Button>
         </div>
       </form>
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">
+            Or continue with
+          </span>
+        </div>
+      </div>
+      <Button variant="outline" disabled={isLoading} onClick={() => signIn("google")}>
+        {isLoading ? (
+          <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Icons.google className="mr-2 h-4 w-4" />
+        )}
+        Google
+      </Button>
     </div>
   )
 }
