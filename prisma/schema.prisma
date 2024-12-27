@@ -180,6 +180,9 @@ model Task {
   customFields Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  dependencies    TaskDependency[] @relation("DependentTasks")
+  blockedBy       TaskDependency[] @relation("BlockingTasks")
+  recurring       RecurringTask?
 
   // Relations
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -1148,23 +1151,94 @@ model TaskTemplate {
 }
 
 model TimeEntry {
-  id          String    @id @default(cuid())
-  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  startTime   DateTime
-  endTime     DateTime?
-  duration    Int?      // Duration in seconds
-  description String?
-  billable    Boolean   @default(false)
-  metadata    Json?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  startTime     DateTime
+  endTime       DateTime?
+  duration      Int?      // Duration in seconds
+  description   String?
+  billable      Boolean   @default(false)
+  billableRate  Float?    // Hourly rate for billing
+  invoiced      Boolean   @default(false)
+  invoiceId     String?
+  breakdowns    TimeBreakdown[]
+  pauses        TimePause[]
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([taskId])
   @@index([userId])
   @@index([startTime])
+  @@index([billable])
+  @@index([invoiced])
+}
+
+model TaskDependency {
+  id            String    @id @default(cuid())
+  task          Task      @relation("DependentTasks", fields: [taskId], references: [id], onDelete: Cascade)
+  taskId        String
+  dependsOn     Task      @relation("BlockingTasks", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  dependsOnId   String
+  type          String    // "blocks", "relates_to", "duplicates", "required_by"
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([taskId, dependsOnId])
+  @@index([taskId])
+  @@index([dependsOnId])
+}
+
+model RecurringTask {
+  id            String    @id @default(cuid())
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId        String
+  frequency     String    // "daily", "weekly", "monthly", "custom"
+  interval      Int       // e.g., every 2 weeks
+  daysOfWeek    Int[]     // [1,3,5] for Mon,Wed,Fri
+  monthDay      Int?      // day of month for monthly
+  endDate       DateTime?
+  lastRun       DateTime?
+  nextRun       DateTime?
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([taskId])
+  @@index([frequency])
+  @@index([nextRun])
+}
+
+model TimeBreakdown {
+  id            String    @id @default(cuid())
+  timeEntry     TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  timeEntryId   String
+  category      String    // "development", "meeting", "review", etc.
+  duration      Int       // Duration in seconds
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([timeEntryId])
+  @@index([category])
+}
+
+model TimePause {
+  id            String    @id @default(cuid())
+  timeEntry     TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  timeEntryId   String
+  startTime     DateTime
+  endTime       DateTime?
+  reason        String?
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([timeEntryId])
 }
 
 model AutomationRule {

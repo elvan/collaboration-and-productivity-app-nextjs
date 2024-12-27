@@ -1,286 +1,273 @@
 import { useState } from "react"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { Link2, Plus, X } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import {
   Command,
+  CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
+  CommandSeparator,
 } from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Check, ChevronsUpDown, Link2, Link2Off, Plus } from "lucide-react"
-
-interface Task {
-  id: string
-  title: string
-  status: string
-  priority: string
-}
+import { TaskStatusBadge } from "./task-status-badge"
 
 interface TaskDependenciesProps {
-  task: Task
-  dependencies: Task[]
-  dependents: Task[]
-  availableTasks: Task[]
-  onAddDependency: (taskId: string) => Promise<void>
-  onRemoveDependency: (taskId: string) => Promise<void>
+  taskId: string
+  projectId: string
 }
 
 export function TaskDependencies({
-  task,
-  dependencies,
-  dependents,
-  availableTasks,
-  onAddDependency,
-  onRemoveDependency,
+  taskId,
+  projectId,
 }: TaskDependenciesProps) {
-  const [open, setOpen] = useState(false)
-  const [value, setValue] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedType, setSelectedType] = useState("blocks")
+  const queryClient = useQueryClient()
 
-  const filteredTasks = availableTasks.filter(
-    (t) =>
-      t.id !== task.id &&
-      !dependencies.find((d) => d.id === t.id) &&
-      !dependents.find((d) => d.id === t.id)
-  )
+  const { data: dependencies, isLoading } = useQuery({
+    queryKey: ["task-dependencies", taskId],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/tasks/${taskId}/dependencies`
+      )
+      if (!response.ok) {
+        throw new Error("Failed to fetch dependencies")
+      }
+      return response.json()
+    },
+  })
 
-  const handleAddDependency = async (taskId: string) => {
-    try {
-      setIsLoading(true)
-      await onAddDependency(taskId)
-      setValue("")
-      setOpen(false)
-    } catch (error) {
-      console.error("Failed to add dependency:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const { data: searchResults } = useQuery({
+    queryKey: ["task-search", projectId, searchQuery],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/projects/${projectId}/tasks/search?q=${encodeURIComponent(
+          searchQuery
+        )}`
+      )
+      if (!response.ok) {
+        throw new Error("Failed to search tasks")
+      }
+      return response.json()
+    },
+    enabled: searchQuery.length > 2,
+  })
 
-  const handleRemoveDependency = async (taskId: string) => {
-    try {
-      setIsLoading(true)
-      await onRemoveDependency(taskId)
-    } catch (error) {
-      console.error("Failed to remove dependency:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const addDependency = useMutation({
+    mutationFn: async ({
+      dependsOnId,
+      type,
+    }: {
+      dependsOnId: string
+      type: string
+    }) => {
+      const response = await fetch(
+        `/api/tasks/${taskId}/dependencies`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dependsOnId, type }),
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to add dependency")
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["task-dependencies", taskId],
+      })
+      setIsAddOpen(false)
+      setSearchOpen(false)
+      setSearchQuery("")
+    },
+  })
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "urgent":
-        return "bg-red-500"
-      case "high":
-        return "bg-orange-500"
-      case "medium":
-        return "bg-yellow-500"
-      case "low":
-        return "bg-green-500"
-      default:
-        return "bg-blue-500"
-    }
-  }
+  const removeDependency = useMutation({
+    mutationFn: async (dependencyId: string) => {
+      const response = await fetch(
+        `/api/tasks/${taskId}/dependencies/${dependencyId}`,
+        {
+          method: "DELETE",
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to remove dependency")
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["task-dependencies", taskId],
+      })
+    },
+  })
+
+  const dependencyTypes = [
+    { value: "blocks", label: "Blocks" },
+    { value: "relates_to", label: "Relates to" },
+    { value: "duplicates", label: "Duplicates" },
+    { value: "required_by", label: "Required by" },
+  ]
 
   return (
     <div className="space-y-4">
-      {/* Dependencies */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Dependencies</CardTitle>
-              <CardDescription>
-                Tasks that must be completed before this task
-              </CardDescription>
-            </div>
-            <Popover open={open} onOpenChange={setOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={open}
-                  className="justify-between"
-                  disabled={isLoading || filteredTasks.length === 0}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Dependency
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0">
-                <Command>
-                  <CommandInput placeholder="Search tasks..." />
-                  <CommandEmpty>No tasks found.</CommandEmpty>
-                  <CommandGroup>
-                    <ScrollArea className="h-[200px]">
-                      {filteredTasks.map((task) => (
-                        <CommandItem
-                          key={task.id}
-                          value={task.id}
-                          onSelect={() => handleAddDependency(task.id)}
-                        >
-                          <Check
-                            className={`mr-2 h-4 w-4 ${
-                              value === task.id ? "opacity-100" : "opacity-0"
-                            }`}
-                          />
-                          <div className="flex flex-1 items-center justify-between">
-                            <span>{task.title}</span>
-                            <Badge
-                              className={`${getPriorityColor(
-                                task.priority
-                              )} text-white`}
-                            >
-                              {task.priority}
-                            </Badge>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </ScrollArea>
-                  </CommandGroup>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {dependencies.length === 0 ? (
-            <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed">
-              <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                <Link2 className="h-8 w-8" />
-                <span>No dependencies</span>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {dependencies.map((dep) => (
-                <div
-                  key={dep.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <Link2 className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{dep.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Status: {dep.status}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      className={`${getPriorityColor(dep.priority)} text-white`}
-                    >
-                      {dep.priority}
-                    </Badge>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={isLoading}
-                        >
-                          <Link2Off className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Remove Dependency?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to remove this dependency? This
-                            action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleRemoveDependency(dep.id)}
-                          >
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-medium">Dependencies</h3>
+          <p className="text-sm text-muted-foreground">
+            Manage task dependencies and relationships.
+          </p>
+        </div>
+        <Button onClick={() => setIsAddOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Dependency
+        </Button>
+      </div>
 
-      {/* Dependent Tasks */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Dependent Tasks</CardTitle>
-          <CardDescription>
-            Tasks that depend on this task being completed
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {dependents.length === 0 ? (
-            <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed">
-              <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                <Link2 className="h-8 w-8" />
-                <span>No dependent tasks</span>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {dependents.map((dep) => (
-                <div
-                  key={dep.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <Link2 className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{dep.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Status: {dep.status}
-                      </p>
-                    </div>
+      {isLoading ? (
+        <div className="grid gap-2">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-12 animate-pulse rounded-md bg-muted"
+            />
+          ))}
+        </div>
+      ) : dependencies?.length === 0 ? (
+        <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
+          <div className="text-center">
+            <Link2 className="mx-auto h-6 w-6 text-muted-foreground" />
+            <p className="mt-2 text-sm text-muted-foreground">
+              No dependencies yet
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-2">
+          {dependencies?.map((dep: any) => (
+            <div
+              key={dep.id}
+              className="flex items-center justify-between rounded-md border p-3"
+            >
+              <div className="flex items-center gap-3">
+                <Badge variant="outline">{dep.type}</Badge>
+                <div>
+                  <p className="font-medium">{dep.dependsOn.title}</p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <TaskStatusBadge status={dep.dependsOn.status} />
+                    <span>#{dep.dependsOn.number}</span>
                   </div>
-                  <Badge
-                    className={`${getPriorityColor(dep.priority)} text-white`}
-                  >
-                    {dep.priority}
-                  </Badge>
                 </div>
-              ))}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => removeDependency.mutate(dep.id)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Dependency</DialogTitle>
+            <DialogDescription>
+              Link this task to another task.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Relationship Type</Label>
+              <Select
+                value={selectedType}
+                onValueChange={setSelectedType}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dependencyTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Search Tasks</Label>
+              <Button
+                variant="outline"
+                className="justify-start"
+                onClick={() => setSearchOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Select Task
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <CommandInput
+          placeholder="Search tasks..."
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+        />
+        <CommandList>
+          <CommandEmpty>No tasks found.</CommandEmpty>
+          <CommandGroup>
+            {searchResults?.map((task: any) => (
+              <CommandItem
+                key={task.id}
+                onSelect={() => {
+                  addDependency.mutate({
+                    dependsOnId: task.id,
+                    type: selectedType,
+                  })
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <TaskStatusBadge status={task.status} />
+                  <span>#{task.number}</span>
+                  <span>{task.title}</span>
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
     </div>
   )
 }
