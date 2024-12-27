@@ -357,3 +357,47 @@ model NotificationFilter {
   @@index([userId])
   @@index([createdAt])
 }
+
+model NotificationAnalytics {
+  id            String   @id @default(cuid())
+  userId        String
+  notificationId String?
+  batchId       String?
+  event         String   // sent, delivered, read, clicked, dismissed
+  channel       String   // app, email, push
+  metadata      Json?    // Additional event data
+  createdAt     DateTime @default(now())
+  
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notification  Notification? @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  batch         NotificationBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([notificationId])
+  @@index([batchId])
+  @@index([event])
+  @@index([channel])
+  @@index([createdAt])
+}
+
+model NotificationStats {
+  id            String   @id @default(cuid())
+  userId        String
+  period        String   // daily, weekly, monthly
+  date          DateTime
+  channel       String   // app, email, push
+  total         Int      @default(0)
+  read          Int      @default(0)
+  clicked       Int      @default(0)
+  dismissed     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period, date, channel])
+  @@index([userId])
+  @@index([period])
+  @@index([date])
+  @@index([channel])
+}
