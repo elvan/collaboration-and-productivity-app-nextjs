@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { TaskTypeSelector } from "./task-type-selector"
 import { TaskStatusSelector } from "./task-status-selector"
 import { CustomFieldEditor } from "./custom-field-editor"
+import { TimeTrackingButton } from "./time-tracking-button"
+import { TaskTemplateSelector } from "./task-template-selector"
 
 interface TaskDetailsProps {
   taskId: string
@@ -20,6 +22,8 @@ export function TaskDetails({ taskId }: TaskDetailsProps) {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState("details")
   const [activityFilter, setActivityFilter] = useState("all")
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false)
+  const [isAutomationDialogOpen, setIsAutomationDialogOpen] = useState(false)
 
   const {
     task,
@@ -29,6 +33,8 @@ export function TaskDetails({ taskId }: TaskDetailsProps) {
     taskTypes,
     taskStatuses,
     customFields,
+    templates,
+    automationRules,
     isLoading,
     createComment,
     updateComment,
@@ -38,6 +44,8 @@ export function TaskDetails({ taskId }: TaskDetailsProps) {
     updateTaskType,
     updateTaskStatus,
     updateCustomFields,
+    createTemplate,
+    createAutomationRule,
   } = useTaskDetails(taskId)
 
   if (isLoading) {
@@ -86,7 +94,27 @@ export function TaskDetails({ taskId }: TaskDetailsProps) {
               <Icons.activity className="h-4 w-4" />
               <span>Activity</span>
             </TabsTrigger>
+            <TabsTrigger value="automations" className="space-x-2">
+              <Icons.zap className="h-4 w-4" />
+              <span>Automations</span>
+            </TabsTrigger>
           </TabsList>
+
+          <div className="flex items-center gap-2">
+            <TimeTrackingButton
+              taskId={taskId}
+              onTimeUpdate={() => {
+                // Refresh task data
+              }}
+            />
+            <TaskTemplateSelector
+              projectId={task.projectId}
+              onSelect={(template) => {
+                // Apply template to task
+              }}
+              onCreate={createTemplate}
+            />
+          </div>
         </div>
 
         <TabsContent value="details" className="space-y-6">
@@ -148,7 +176,120 @@ export function TaskDetails({ taskId }: TaskDetailsProps) {
             onFilterChange={setActivityFilter}
           />
         </TabsContent>
+
+        <TabsContent value="automations" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium">
+                Automation Rules
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Manage automation rules for this task.
+              </p>
+            </div>
+            <Button
+              onClick={() => setIsAutomationDialogOpen(true)}
+            >
+              <Icons.plus className="mr-2 h-4 w-4" />
+              Add Rule
+            </Button>
+          </div>
+
+          <div className="grid gap-4">
+            {automationRules?.map((rule) => (
+              <Card key={rule.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>{rule.name}</CardTitle>
+                      <CardDescription>
+                        {rule.description}
+                      </CardDescription>
+                    </div>
+                    <Switch
+                      checked={rule.enabled}
+                      onCheckedChange={() => {
+                        // Toggle rule enabled state
+                      }}
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4">
+                    <div>
+                      <h4 className="font-medium">Trigger</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {rule.trigger
+                          .split("_")
+                          .map(
+                            (word) =>
+                              word.charAt(0).toUpperCase() +
+                              word.slice(1)
+                          )
+                          .join(" ")}
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium">Conditions</h4>
+                      <ul className="mt-2 space-y-2">
+                        {rule.conditions.map(
+                          (condition, index) => (
+                            <li
+                              key={index}
+                              className="text-sm text-muted-foreground"
+                            >
+                              {condition.field}{" "}
+                              {condition.operator
+                                .split("_")
+                                .join(" ")}{" "}
+                              {condition.value}
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-medium">Actions</h4>
+                      <ul className="mt-2 space-y-2">
+                        {rule.actions.map((action, index) => (
+                          <li
+                            key={index}
+                            className="text-sm text-muted-foreground"
+                          >
+                            {action.type
+                              .split("_")
+                              .map(
+                                (word) =>
+                                  word.charAt(0).toUpperCase() +
+                                  word.slice(1)
+                              )
+                              .join(" ")}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={isAutomationDialogOpen}
+        onOpenChange={setIsAutomationDialogOpen}
+      >
+        <DialogContent className="max-w-4xl">
+          <AutomationRuleEditor
+            onSave={(rule) => {
+              createAutomationRule(rule)
+              setIsAutomationDialogOpen(false)
+            }}
+            onCancel={() => setIsAutomationDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
