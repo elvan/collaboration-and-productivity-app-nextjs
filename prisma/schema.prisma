@@ -177,20 +177,29 @@ model Notification {
 }
 
 model NotificationPreference {
-  id                String   @id @default(cuid())
-  userId           String
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailEnabled     Boolean  @default(true)
-  memberActivity   Boolean  @default(true)
-  taskActivity     Boolean  @default(true)
-  mentions         Boolean  @default(true)
-  dailyDigest      Boolean  @default(false)
-  weeklyDigest     Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Template type preferences
+  templateType String  // e.g., "project.created", "task.assigned"
+  enabled     Boolean @default(true)
+  email       Boolean @default(true)
+  push        Boolean @default(true)
+  sound       Boolean @default(true)
+  soundType   String? // Custom sound for this notification type
+  priority    String  @default("normal") // Override template priority
+  
+  // Digest settings
+  includeInDigest Boolean @default(true)
+  digestFrequency String?  // "daily", "weekly", null for immediate
 
-  @@unique([userId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, templateType])
   @@index([userId])
+  @@index([templateType])
 }
 
 model NotificationMetric {
