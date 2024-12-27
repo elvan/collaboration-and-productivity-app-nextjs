@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { createActivityNotification } from "@/lib/notification"
 
 export async function createActivity(
   type: string,
@@ -6,7 +7,7 @@ export async function createActivity(
   projectId: string,
   userId: string
 ) {
-  return await prisma.activity.create({
+  const activity = await prisma.activity.create({
     data: {
       type,
       data,
@@ -18,9 +19,18 @@ export async function createActivity(
         select: {
           name: true,
           email: true,
-          image: true,
+        },
+      },
+      project: {
+        select: {
+          name: true,
         },
       },
     },
   })
+
+  // Create notifications for project members
+  await createActivityNotification(activity)
+
+  return activity
 }

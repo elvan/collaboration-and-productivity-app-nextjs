@@ -25,6 +25,7 @@ model User {
   ownedProjects Project[]    @relation("ProjectOwner")
   sentInvitations ProjectInvitation[] @relation("SentInvitations")
   receivedInvitations ProjectInvitation[] @relation("ReceivedInvitations")
+  notifications Notification[]
 }
 
 model Account {
@@ -146,4 +147,21 @@ model Activity {
 
   @@index([projectId])
   @@index([userId])
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  type        String    // activity, mention, system
+  title       String
+  message     String
+  read        Boolean   @default(false)
+  activityId  String?
+  activity    Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([activityId])
 }
