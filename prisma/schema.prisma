@@ -20,9 +20,10 @@ model User {
   accounts      Account[]
   sessions      Session[]
   workspaces    WorkspaceMember[]
-  tasks         Task[]
-  projects      Project[]    @relation("ProjectMembers")
-  ownedProjects Project[]    @relation("ProjectOwner")
+  assignedTasks Task[]    @relation("TaskAssignee")
+  createdTasks  Task[]    @relation("TaskCreator")
+  projects      Project[] @relation("ProjectMembers")
+  ownedProjects Project[] @relation("ProjectOwner")
   sentInvitations ProjectInvitation[] @relation("SentInvitations")
   receivedInvitations ProjectInvitation[] @relation("ReceivedInvitations")
   notifications Notification[]
@@ -98,18 +99,13 @@ model Project {
   customFields CustomField[]
   webhooks    Webhook[]
   emailTemplates EmailTemplate[]
-  priorityRules PriorityRule[]
-  workflowAutomations WorkflowAutomation[]
-
-  // Relations
-  owner       User     @relation(fields: [ownerId], references: [id])
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  owner       User      @relation("ProjectOwner", fields: [ownerId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   members     User[]    @relation("ProjectMembers")
-  priorityRules PriorityRule[]
-  workflowAutomations WorkflowAutomation[]
+  integrations Integration[]
 
-  @@index([workspaceId])
   @@index([ownerId])
+  @@index([workspaceId])
 }
 
 model PriorityRule {
@@ -144,110 +140,310 @@ model WorkflowAutomation {
 }
 
 model Activity {
-  id        String   @id @default(cuid())
-  type      String
-  metadata  Json?
-  createdAt DateTime @default(now())
-  userId    String
-  taskId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  type          String   // task_created, comment_added, etc.
+  projectId     String?
+  taskId        String?
+  userId        String
+  metadata      Json?
+  createdAt     DateTime @default(now())
 
+  project       Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task          Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+
+  @@index([projectId, type])
+  @@index([taskId, type])
   @@index([userId])
-  @@index([taskId])
-  @@index([type])
   @@index([createdAt])
 }
 
 model Task {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  status      String   @default("todo")
-  priority    String   @default("medium")
-  dueDate     DateTime?
-  startDate   DateTime?
-  endDate     DateTime?
-  progress    Float    @default(0)
-  projectId   String
-  parentId    String?
-  assigneeId  String?
-  createdById String
-  typeId      String?
-  type        TaskType? @relation(fields: [typeId], references: [id])
-  statusId    String?
-  status      TaskStatus? @relation(fields: [statusId], references: [id])
-  customFields Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  dependencies    TaskDependency[] @relation("DependentTasks")
-  blockedBy       TaskDependency[] @relation("BlockingTasks")
-  recurring       RecurringTask?
-  priority      TaskPriority? @relation(fields: [priorityId], references: [id])
-  priorityId    String?
-  lists         TaskListItem[]
-  tags          TaskTagAssignment[]
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  parent      Task?    @relation("TaskHierarchy", fields: [parentId], references: [id])
-  subtasks    Task[]   @relation("TaskHierarchy")
-  assignee    User?    @relation("AssignedTasks", fields: [assigneeId], references: [id])
-  createdBy   User     @relation("CreatedTasks", fields: [createdById], references: [id])
-  customFieldValues CustomFieldValue[]
-  comments    Comment[]
-  attachments Attachment[]
-  activities  Activity[]
-  outgoingRelationships TaskRelationship[] @relation("SourceTask")
-  incomingRelationships TaskRelationship[] @relation("TargetTask")
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  status        String    @default("todo")
+  priority      String?
+  dueDate       DateTime?
+  startDate     DateTime?
+  completedAt   DateTime?
+  estimatedHours Float?
+  assigneeId    String?
+  createdById   String
+  projectId     String
+  parentId      String?
+  
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent        Task?     @relation("TaskHierarchy", fields: [parentId], references: [id])
+  subtasks      Task[]    @relation("TaskHierarchy")
+  assignee      User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy     User      @relation("TaskCreator", fields: [createdById], references: [id])
+  labels        Label[]
+  comments      Comment[]
+  mentions      Mention[]
+  activities    Activity[]
+  timeEntries   TimeEntry[]
+  dependencies  TaskDependency[] @relation("DependentTasks")
+  blockedBy     TaskDependency[] @relation("BlockingTasks")
+  attachments   Attachment[]
+  customValues  CustomFieldValue[]
+  checklists    Checklist[]
+  listItems     TaskListItem[]
+  notifications Notification[]
 
   @@index([projectId])
-  @@index([parentId])
   @@index([assigneeId])
   @@index([createdById])
+  @@index([parentId])
   @@index([status])
   @@index([priority])
   @@index([dueDate])
-  @@index([typeId])
-  @@index([statusId])
-  @@index([priorityId])
 }
 
-model TaskList {
-  id           String   @id @default(cuid())
-  name         String
-  description  String?
-  projectId    String
-  color        String?
-  icon         String?
-  sortOrder    Json?    // Serialized array of task IDs
-  filters      Json?    // Serialized filter conditions
-  viewSettings Json?    // Serialized view settings
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+model TaskType {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  fields      CustomField[]
+  templates   TaskTemplate[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  // Relations
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tasks        Task[]
-
+  @@unique([projectId, name])
   @@index([projectId])
 }
 
-model TaskRelationship {
-  id           String   @id @default(cuid())
-  type         String   // parent_child, blocks, depends_on, related_to
-  sourceTaskId String
-  targetTaskId String
-  metadata     Json?
-  createdAt    DateTime @default(now())
+model TaskStatus {
+  id          String    @id @default(cuid())
+  name        String
+  color       String
+  icon        String?
+  description String?
+  category    String    // "todo", "in_progress", "done", "canceled"
+  position    Int       // For ordering within category
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  // Relations
-  sourceTask   Task     @relation("SourceTask", fields: [sourceTaskId], references: [id], onDelete: Cascade)
-  targetTask   Task     @relation("TargetTask", fields: [targetTaskId], references: [id], onDelete: Cascade)
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([category])
+}
 
-  @@unique([sourceTaskId, targetTaskId, type])
-  @@index([sourceTaskId])
-  @@index([targetTaskId])
+model TaskPriority {
+  id          String    @id @default(cuid())
+  name        String
+  level       Int       // 1-5 for priority levels
+  color       String
+  icon        String?
+  description String?
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([level])
+}
+
+model TaskTemplate {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  typeId      String
+  type        TaskType  @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defaultValues Json?   // Default values for custom fields
+  checklists  Json?     // Predefined checklists
+  attachments Json?     // Template attachments
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([typeId, name])
+  @@index([typeId])
+  @@index([projectId])
+}
+
+model TaskList {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  viewType    String    // "list", "board", "calendar", "gantt"
+  filters     Json?     // Saved filters
+  sortOrder   Json?     // Saved sort order
+  groupBy     String?   // Field to group by
+  projectId   String
+  parentId    String?
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      TaskList? @relation("TaskListHierarchy", fields: [parentId], references: [id])
+  children    TaskList[] @relation("TaskListHierarchy")
+  tasks       TaskListItem[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model TaskListItem {
+  id          String    @id @default(cuid())
+  taskId      String
+  listId      String
+  position    Float     // For ordering within list
+  pinned      Boolean   @default(false)
+  hidden      Boolean   @default(false)
+  metadata    Json?
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  list        TaskList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([taskId, listId])
+  @@index([taskId])
+  @@index([listId])
+  @@index([position])
+}
+
+model TaskTag {
+  id          String    @id @default(cuid())
+  name        String
+  color       String
+  icon        String?
+  description String?
+  projectId   String
+  parentId    String?
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      TaskTag?  @relation("TaskTagHierarchy", fields: [parentId], references: [id])
+  children    TaskTag[] @relation("TaskTagHierarchy")
+  tasks       TaskTagAssignment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model TaskTagAssignment {
+  id          String    @id @default(cuid())
+  taskId      String
+  tagId       String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag         TaskTag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([taskId, tagId])
+  @@index([taskId])
+  @@index([tagId])
+}
+
+model CustomField {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  type        String    // text, number, date, select, etc.
+  required    Boolean   @default(false)
+  options     Json?     // For select/multiselect fields
+  defaultValue Json?
+  placeholder String?
+  validation  Json?     // Validation rules
+  position    Int
+  taskTypeId  String
+  taskType    TaskType  @relation(fields: [taskTypeId], references: [id], onDelete: Cascade)
+  values      CustomFieldValue[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([taskTypeId, name])
+  @@index([taskTypeId])
   @@index([type])
+}
+
+model CustomFieldValue {
+  id          String    @id @default(cuid())
+  value       Json
+  taskId      String
+  fieldId     String
+  task        Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  field       CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([taskId, fieldId])
+  @@index([taskId])
+  @@index([fieldId])
+}
+
+model TimeEntry {
+  id          String    @id @default(cuid())
+  taskId      String
+  userId      String
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?      // Duration in seconds
+  description String?
+  billable    Boolean   @default(false)
+  metadata    Json?
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([startTime])
+  @@index([billable])
+}
+
+model TaskDependency {
+  id            String    @id @default(cuid())
+  taskId      String
+  dependsOnId String
+  type        String    // blocks, depends_on, related_to
+  metadata    Json?
+  task        Task      @relation("DependentTasks", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn   Task      @relation("BlockingTasks", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([taskId, dependsOnId])
+  @@index([taskId])
+  @@index([dependsOnId])
+}
+
+model RecurringTask {
+  id          String    @id @default(cuid())
+  taskId      String    @unique
+  frequency   String    // daily, weekly, monthly, custom
+  interval    Int       // e.g., every 2 weeks
+  daysOfWeek  Int[]     // [1,3,5] for Mon,Wed,Fri
+  monthDay    Int?      // day of month for monthly
+  endDate     DateTime?
+  lastRun     DateTime?
+  nextRun     DateTime?
+  metadata    Json?
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([frequency])
+  @@index([nextRun])
 }
 
 model ProjectInvitation {
@@ -269,105 +465,65 @@ model ProjectInvitation {
 
 model Notification {
   id          String    @id @default(cuid())
-  type        String    // "activity", "mention", "system", etc.
-  category    String    // "project", "task", "member", "system"
-  priority    String    @default("normal") // "high", "normal", "low"
-  groupId     String?   // For grouping related notifications
-  groupOrder  Int?      // Order within group
+  type        String    // task_update, mention, system, etc.
+  category    String    // project, task, member, system
+  priority    String    @default("normal")
   title       String
   message     String
   read        Boolean   @default(false)
   dismissed   Boolean   @default(false)
-  metadata    Json?     // Additional context
+  metadata    Json?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   userId      String
+  projectId   String?
+  taskId      String?
   activityId  String?
+  
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
   activity    Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
-  template    NotificationTemplate? @relation(fields: [id], references: [id])
+  deliveries  NotificationDelivery[]
 
   @@index([userId])
-  @@index([type])
-  @@index([category])
-  @@index([groupId])
+  @@index([projectId])
+  @@index([taskId])
+  @@index([type, category])
   @@index([createdAt])
 }
 
 model NotificationDelivery {
   id            String    @id @default(cuid())
   notificationId String
-  userId        String
-  channel       String    // "app", "email", "push"
-  status        String    // "sent", "delivered", "failed", "clicked", "dismissed"
-  error         String?   // Error message if failed
-  metadata      Json?     // Additional context (e.g., device info, email client)
+  channel       String    // app, email, push
+  status        String    // sent, delivered, failed
+  error         String?
+  metadata      Json?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   notification  Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([notificationId])
-  @@index([userId])
-  @@index([channel])
-  @@index([status])
+  @@index([notificationId, channel, status])
   @@index([createdAt])
 }
 
 model NotificationPreference {
-  id            String   @id @default(cuid())
-  userId        String
-  channel       String   // email, in-app, mobile, etc.
-  type          String   // notification type (e.g., mentions, updates, etc.)
-  enabled       Boolean  @default(true)
-  schedule      Json?    // Time windows for receiving notifications
-  frequency     String?  // immediate, daily_digest, weekly_digest
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user          User     @relation(fields: [userId], references: [id])
-
-  @@unique([userId, channel, type])
-  @@index([userId])
-  @@index([channel])
-  @@index([type])
-}
-
-model NotificationDigest {
-  id            String   @id @default(cuid())
-  userId        String
-  channel       String
-  type          String
-  notifications Json     // Array of notification IDs
-  status        String   // pending, sent, failed
-  scheduledFor  DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user          User     @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([channel])
-  @@index([type])
-  @@index([status])
-  @@index([scheduledFor])
-}
-
-model NotificationMetric {
   id          String   @id @default(cuid())
   userId      String
-  projectId   String?
-  type        String   // "notification", "email", "digest"
-  action      String   // "sent", "read", "clicked", "dismissed"
-  timestamp   DateTime @default(now())
-  metadata    Json?    // Additional context like notification type, email type, etc.
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  channel     String   // email, app, push
+  type        String?  // specific notification type
+  enabled     Boolean  @default(true)
+  schedule    Json?    // time windows
+  frequency   String   @default("immediate") // immediate, daily, weekly
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([userId])
-  @@index([projectId])
-  @@index([timestamp])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel, type])
+  @@index([userId, channel])
 }
 
 model PushSubscription {
@@ -489,24 +645,19 @@ model NotificationFilter {
 
 model NotificationAnalytics {
   id            String   @id @default(cuid())
-  userId        String
-  notificationId String?
-  batchId       String?
-  event         String   // sent, delivered, read, clicked, converted
-  channel       String   // app, email, push
+  templateId    String
+  event         String   // sent, delivered, read, clicked
   metadata      Json?    // Additional event data
   userId        String?  // User who triggered the event
   timestamp     DateTime @default(now())
+  triggerUserId String?  // User who triggered the event
+  
+  template      NotificationTemplate @relation(fields: [templateId], references: [id])
+  triggerUser   User?               @relation(fields: [triggerUserId], references: [id])
 
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  notification  Notification? @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  batch         NotificationBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([notificationId])
-  @@index([batchId])
+  @@index([templateId])
+  @@index([triggerUserId])
   @@index([event])
-  @@index([channel])
   @@index([timestamp])
 }
 
@@ -791,37 +942,36 @@ model CampaignEvent {
 }
 
 model Webhook {
-  id          String   @id @default(cuid())
-  url         String
-  events      Json     // Array of event names
-  secret      String
-  enabled     Boolean  @default(true)
-  description String?
-  projectId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  integrationId String
+  url           String
+  secret        String?
+  events        String[] // Array of event types
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  deliveries  WebhookDelivery[]
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  deliveries    WebhookDelivery[]
 
-  @@index([projectId])
+  @@index([integrationId])
+  @@index([active])
 }
 
 model WebhookDelivery {
-  id          String   @id @default(cuid())
-  webhookId   String
-  event       String
-  payload     Json
-  status      String   // success, failed
-  statusCode  Int
-  response    String?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  webhookId     String
+  event         String
+  payload       Json
+  status        String   // success, failed
+  statusCode    Int?
+  error         String?
+  createdAt     DateTime @default(now())
 
-  // Relations
-  webhook     Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  webhook       Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
-  @@index([webhookId])
+  @@index([webhookId, status])
+  @@index([createdAt])
 }
 
 model EmailTemplate {
@@ -885,35 +1035,20 @@ model CalendarIntegration {
 model Comment {
   id        String    @id @default(cuid())
   content   String
-  metadata  Json?
+  taskId    String
+  userId    String
+  replyToId String?   // Optional reference to parent comment
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  userId    String
-  taskId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
   task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo   Comment?  @relation("CommentReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   Comment[] @relation("CommentReplies")
 
-  @@index([userId])
   @@index([taskId])
-  @@index([parentId])
-}
-
-model Activity {
-  id        String   @id @default(cuid())
-  type      String
-  metadata  Json?
-  createdAt DateTime @default(now())
-  userId    String
-  taskId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
   @@index([userId])
-  @@index([taskId])
-  @@index([type])
-  @@index([createdAt])
+  @@index([replyToId])
 }
 
 model Mention {
@@ -951,207 +1086,6 @@ model Attachment {
   @@index([uploaderId])
 }
 
-model CustomField {
-  id            String    @id @default(cuid())
-  name          String
-  description   String?
-  type          String    // text, number, date, select, multiselect, user, relationship, url, email, phone, etc.
-  required      Boolean   @default(false)
-  options       Json?     // For select/multiselect fields
-  defaultValue  Json?
-  placeholder   String?
-  validation    Json?     // Validation rules
-  taskType      TaskType  @relation(fields: [taskTypeId], references: [id], onDelete: Cascade)
-  taskTypeId    String
-  values        CustomFieldValue[]
-  position      Int
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([taskTypeId, name])
-  @@index([taskTypeId])
-  @@index([type])
-}
-
-model CustomFieldValue {
-  id            String    @id @default(cuid())
-  value         Json
-  field         CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
-  fieldId       String
-  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId        String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([taskId, fieldId])
-  @@index([taskId])
-  @@index([fieldId])
-}
-
-model TaskType {
-  id            String    @id @default(cuid())
-  name          String
-  description   String?
-  icon          String?
-  color         String
-  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId     String
-  tasks         Task[]
-  fields        CustomField[]
-  templates     TaskTemplate[]
-  automations   WorkflowAutomation[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([projectId, name])
-  @@index([projectId])
-}
-
-model TaskTemplate {
-  id            String    @id @default(cuid())
-  name          String
-  description   String?
-  taskType      TaskType  @relation(fields: [taskTypeId], references: [id], onDelete: Cascade)
-  taskTypeId    String
-  defaultValues Json?     // Default values for custom fields
-  checklists    Json?     // Predefined checklists
-  attachments   Json?     // Template attachments
-  automations   WorkflowAutomation[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([taskTypeId, name])
-  @@index([taskTypeId])
-}
-
-model TaskPriority {
-  id            String    @id @default(cuid())
-  name          String
-  level         Int       // 1-5 for priority levels
-  color         String
-  icon          String?
-  description   String?
-  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId     String
-  tasks         Task[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([projectId, name])
-  @@index([projectId])
-  @@index([level])
-}
-
-model TaskStatus {
-  id            String    @id @default(cuid())
-  name          String
-  color         String
-  icon          String?
-  description   String?
-  category      String    // "todo", "in_progress", "done", "canceled", etc.
-  position      Int       // For ordering within category
-  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId     String
-  tasks         Task[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([projectId, name])
-  @@index([projectId])
-  @@index([category])
-}
-
-model TaskList {
-  id            String    @id @default(cuid())
-  name          String
-  description   String?
-  icon          String?
-  color         String?
-  viewType      String    // "list", "board", "calendar", "gantt", "timeline"
-  filters       Json?     // Saved filters for the list
-  sortOrder     Json?     // Saved sort order
-  groupBy       String?   // Field to group by
-  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId     String
-  tasks         TaskListItem[]
-  parent        TaskList? @relation("TaskListHierarchy", fields: [parentId], references: [id])
-  parentId      String?
-  children      TaskList[] @relation("TaskListHierarchy")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([projectId, name])
-  @@index([projectId])
-  @@index([parentId])
-}
-
-model TaskListItem {
-  id            String    @id @default(cuid())
-  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId        String
-  list          TaskList  @relation(fields: [listId], references: [id], onDelete: Cascade)
-  listId        String
-  position      Float     // For ordering within list
-  pinned        Boolean   @default(false)
-  hidden        Boolean   @default(false)
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([taskId, listId])
-  @@index([taskId])
-  @@index([listId])
-  @@index([position])
-}
-
-model TaskTag {
-  id            String    @id @default(cuid())
-  name          String
-  color         String
-  icon          String?
-  description   String?
-  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId     String
-  tasks         TaskTagAssignment[]
-  parent        TaskTag?  @relation("TaskTagHierarchy", fields: [parentId], references: [id])
-  parentId      String?
-  children      TaskTag[] @relation("TaskTagHierarchy")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([projectId, name])
-  @@index([projectId])
-  @@index([parentId])
-}
-
-model TaskTagAssignment {
-  id            String    @id @default(cuid())
-  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId        String
-  tag           TaskTag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  tagId         String
-  createdAt     DateTime  @default(now())
-
-  @@unique([taskId, tagId])
-  @@index([taskId])
-  @@index([tagId])
-}
-
-model CustomFieldValue {
-  id            String   @id @default(cuid())
-  value         Json
-  taskId        String
-  customFieldId String
-  task         Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  customField  CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([taskId, customFieldId])
-  @@index([taskId])
-  @@index([customFieldId])
-}
-
 model Workflow {
   id          String   @id @default(cuid())
   name        String
@@ -1168,82 +1102,74 @@ model Workflow {
   @@index([projectId])
 }
 
-model WorkflowAutomation {
-  id          String   @id @default(cuid())
-  name        String
-  workflowId  String
-  trigger     Json     // Trigger conditions
-  actions     Json     // Actions to perform
-  enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-
-  @@index([workflowId])
-}
-
 model Integration {
   id            String   @id @default(cuid())
-  type          String   // e.g., "github", "slack", "jira"
+  projectId     String
+  type          String   // github, slack, jira
   name          String
   config        Json
-  isActive      Boolean  @default(true)
+  status        String   @default("active")
+  lastSyncAt    DateTime?
+  metadata      Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  createdById   String
-  workspaceId   String
 
-  createdBy     User      @relation(fields: [createdById], references: [id])
-  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  webhooks      Webhook[]
+  syncLogs      IntegrationSyncLog[]
 
-  @@index([workspaceId])
-  @@index([createdById])
-  @@index([type])
-  @@index([isActive])
+  @@unique([projectId, type, name])
+  @@index([projectId, type])
+  @@index([status])
 }
 
-model ActivityLog {
+model IntegrationSyncLog {
   id            String   @id @default(cuid())
-  type          String   // e.g., "task.created", "comment.added"
-  action        String   // e.g., "created", "updated", "deleted"
-  entityType    String   // e.g., "task", "comment", "document"
+  integrationId String
+  type          String   // full_sync, incremental
+  status        String   // success, failed
+  error         String?
+  metadata      Json?
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, type, status])
+  @@index([startedAt])
+}
+
+model Analytics {
+  id            String   @id @default(cuid())
+  type          String   // task, project, user
+  entityId      String   // ID of the entity being analyzed
+  metric        String   // completion_rate, time_spent, etc.
+  value         Float
+  period        String   // daily, weekly, monthly
+  startDate     DateTime
+  endDate       DateTime
+  metadata      Json?
+
+  @@unique([type, entityId, metric, period, startDate])
+  @@index([type, entityId])
+  @@index([metric])
+  @@index([period, startDate])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  action        String   // create, update, delete
+  entityType    String   // task, project, user
   entityId      String
-  metadata      Json?
-  createdAt     DateTime @default(now())
   userId        String
-  workspaceId   String
-
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace     Workspace @relation(fields: [workspaceId], references: [id])
-
-  @@index([workspaceId])
-  @@index([userId])
-  @@index([type])
-  @@index([entityType])
-  @@index([entityId])
-  @@index([createdAt])
-}
-
-model Audit {
-  id            String   @id @default(cuid())
-  type          String   // e.g., "security", "data", "access"
-  action        String   // e.g., "login", "export", "permission_change"
-  description   String
+  changes       Json?    // Before/after changes
   metadata      Json?
-  ipAddress     String?
-  userAgent     String?
   createdAt     DateTime @default(now())
-  userId        String?
-  workspaceId   String
 
-  user          User?     @relation(fields: [userId], references: [id])
-  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([workspaceId])
+  @@index([entityType, entityId])
   @@index([userId])
-  @@index([type])
   @@index([action])
   @@index([createdAt])
 }
@@ -1262,153 +1188,4 @@ model WorkspaceAnalytics {
   workspace         Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])
-}
-
-model TaskTemplate {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  icon        String?
-  color       String?
-  typeId      String?
-  statusId    String?
-  priority    String?
-  estimatedTime Int?
-  customFields Json?
-  checklists  Json?
-  subtasks    Json?
-  automations Json?
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([projectId])
-}
-
-model TimeEntry {
-  id            String    @id @default(cuid())
-  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String
-  startTime     DateTime
-  endTime       DateTime?
-  duration      Int?      // Duration in seconds
-  description   String?
-  billable      Boolean   @default(false)
-  billableRate  Float?    // Hourly rate for billing
-  invoiced      Boolean   @default(false)
-  invoiceId     String?
-  breakdowns    TimeBreakdown[]
-  pauses        TimePause[]
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([taskId])
-  @@index([userId])
-  @@index([startTime])
-  @@index([billable])
-  @@index([invoiced])
-}
-
-model TaskDependency {
-  id            String    @id @default(cuid())
-  task          Task      @relation("DependentTasks", fields: [taskId], references: [id], onDelete: Cascade)
-  taskId        String
-  dependsOn     Task      @relation("BlockingTasks", fields: [dependsOnId], references: [id], onDelete: Cascade)
-  dependsOnId   String
-  type          String    // "blocks", "relates_to", "duplicates", "required_by"
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@unique([taskId, dependsOnId])
-  @@index([taskId])
-  @@index([dependsOnId])
-}
-
-model RecurringTask {
-  id            String    @id @default(cuid())
-  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId        String
-  frequency     String    // "daily", "weekly", "monthly", "custom"
-  interval      Int       // e.g., every 2 weeks
-  daysOfWeek    Int[]     // [1,3,5] for Mon,Wed,Fri
-  monthDay      Int?      // day of month for monthly
-  endDate       DateTime?
-  lastRun       DateTime?
-  nextRun       DateTime?
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([taskId])
-  @@index([frequency])
-  @@index([nextRun])
-}
-
-model TimeBreakdown {
-  id            String    @id @default(cuid())
-  timeEntry     TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
-  timeEntryId   String
-  category      String    // "development", "meeting", "review", etc.
-  duration      Int       // Duration in seconds
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([timeEntryId])
-  @@index([category])
-}
-
-model TimePause {
-  id            String    @id @default(cuid())
-  timeEntry     TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
-  timeEntryId   String
-  startTime     DateTime
-  endTime       DateTime?
-  reason        String?
-  metadata      Json?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([timeEntryId])
-}
-
-model AutomationRule {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  enabled     Boolean   @default(true)
-  trigger     String
-  conditions  Json
-  actions     Json
-  metadata    Json?
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId   String
-  runs        AutomationRun[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([projectId])
-  @@index([trigger])
-  @@index([enabled])
-}
-
-model AutomationRun {
-  id          String    @id @default(cuid())
-  rule        AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-  ruleId      String
-  trigger     String
-  context     Json
-  success     Boolean
-  error       Json?
-  createdAt   DateTime  @default(now())
-
-  @@index([ruleId])
-  @@index([trigger])
-  @@index([success])
-  @@index([createdAt])
 }
