@@ -140,7 +140,7 @@ export function Header() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className='text-red-600 focus:bg-red-50 focus:text-red-600'
-                    onClick={() => signOut()}
+                    onClick={() => signOut({ callbackUrl: '/' })}
                   >
                     <LogOut className='mr-2 h-4 w-4' />
                     Log out
