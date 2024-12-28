@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 interface ActivityExportProps {
   onExport: (options: {
-    format: 'csv' | 'excel' | 'json';
+    format: 'csv' | 'excel' | 'json' | 'pdf' | 'html';
     dateRange?: {
       from: Date;
       to: Date;
@@ -31,7 +31,7 @@ export function ActivityExport({
   activityTypes,
   isExporting = false,
 }: ActivityExportProps) {
-  const [format, setFormat] = useState<'csv' | 'excel' | 'json'>('csv');
+  const [format, setFormat] = useState<'csv' | 'excel' | 'json' | 'pdf' | 'html'>('csv');
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -84,10 +84,19 @@ export function ActivityExport({
           <div className="space-y-2">
             <Label>Export Format</Label>
             <Select value={format} onValueChange={(value: any) => setFormat(value)}>
-              <option value="csv">CSV</option>
-              <option value="excel">Excel</option>
-              <option value="json">JSON</option>
+              <option value="csv">CSV (Comma Separated Values)</option>
+              <option value="excel">Excel Spreadsheet</option>
+              <option value="json">JSON (JavaScript Object Notation)</option>
+              <option value="pdf">PDF Document</option>
+              <option value="html">HTML Web Page</option>
             </Select>
+            <p className="text-sm text-gray-500">
+              {format === 'csv' && 'Best for importing into other applications'}
+              {format === 'excel' && 'Best for detailed analysis and formatting'}
+              {format === 'json' && 'Best for programmatic processing'}
+              {format === 'pdf' && 'Best for sharing and printing'}
+              {format === 'html' && 'Best for viewing in a web browser'}
+            </p>
           </div>
 
           <div className="space-y-2">

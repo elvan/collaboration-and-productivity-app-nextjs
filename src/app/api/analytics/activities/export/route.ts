@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Generate export file
-    const { data, filename } = await exportActivities(activities, {
+    const { data, filename, mimeType } = await exportActivities(activities, {
       format,
       dateRange: dateRange
         ? {
@@ -63,26 +63,12 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
     });
 
-    // Set appropriate headers based on format
+    // Set appropriate headers
     const headers = new Headers();
     headers.set('Content-Disposition', `attachment; filename="${filename}"`);
+    headers.set('Content-Type', mimeType);
 
-    switch (format) {
-      case 'csv':
-        headers.set('Content-Type', 'text/csv');
-        return new NextResponse(data as string, { headers });
-      case 'excel':
-        headers.set(
-          'Content-Type',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        );
-        return new NextResponse(data as Buffer, { headers });
-      case 'json':
-        headers.set('Content-Type', 'application/json');
-        return new NextResponse(data as string, { headers });
-      default:
-        return new NextResponse('Unsupported format', { status: 400 });
-    }
+    return new NextResponse(data, { headers });
   } catch (error) {
     console.error('[ACTIVITY_EXPORT_ERROR]', error);
     return new NextResponse('Internal Server Error', { status: 500 });
