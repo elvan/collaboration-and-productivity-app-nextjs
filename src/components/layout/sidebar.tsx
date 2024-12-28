@@ -565,6 +565,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   };
 
   const filteredNavItems = useMemo(() => {
+    console.log('Admin access in sidebar:', hasAdminAccess)
     return sidebarNavItems.filter(item => {
       if (item.title === "Admin") {
         return hasAdminAccess

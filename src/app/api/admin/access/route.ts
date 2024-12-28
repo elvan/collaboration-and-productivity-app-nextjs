@@ -15,11 +15,18 @@ export async function GET() {
       where: {
         userId: session.user.id,
         role: {
-          name: "admin"
+          name: {
+            mode: 'insensitive',
+            equals: 'admin'
+          }
         }
+      },
+      include: {
+        role: true
       }
     })
 
+    console.log('Admin access check for user:', session.user.id, 'Result:', !!userRole, 'Role:', userRole?.role)
     return NextResponse.json({ hasAccess: !!userRole })
   } catch (error) {
     console.error("Error checking admin access:", error)
