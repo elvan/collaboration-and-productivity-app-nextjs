@@ -12,6 +12,9 @@ model UserProfile {
   industry        String?
   specializations String[]
   languages       String[] // Professional languages
+  verifiedAt      DateTime?
+  verifiedBy      String? // Organization that verified the profile
+  verificationBadges VerificationBadge[]
 
   // Contact Info
   phone          String?
@@ -32,6 +35,7 @@ model UserProfile {
   skills       Skill[] // Relation to skills with endorsements
   interests    String[] // Array of interest areas
   achievements Achievement[]
+  expertise    ExpertiseArea[]
 
   // Profile Customization
   theme          ProfileTheme  @default(SYSTEM)
@@ -41,6 +45,9 @@ model UserProfile {
   avatarStyle    AvatarStyle   @default(CIRCLE)
   featuredWork   Json? // Pinned/featured items
   customSections Json? // User-defined sections
+  widgetLayout   Json? // Custom widget arrangement
+  customCss      String? // Custom CSS for profile
+  brandKit       BrandKit? // Custom branding
 
   // Visibility Settings
   visibility        ProfileVisibility @default(PUBLIC)
@@ -175,6 +182,30 @@ model ProfileAnalytics {
   searchKeywords Json? // Keywords that led to profile
   searchRankings Json? // Search result positions
 
+  // Enhanced metrics
+  skillEndorsements    Json?    // Endorsement analytics by skill
+  expertiseGrowth      Json?    // Expertise development over time
+  connectionQuality    Float?   // Score based on connection relevance
+  influenceScore      Float?   // Professional influence metric
+  
+  // Interaction patterns
+  peakActivityTimes   Json?    // Most active times
+  interactionTypes    Json?    // Types of profile interactions
+  referralSources     Json?    // Traffic sources
+  
+  // Career progression
+  careerMilestones    Json?    // Timeline of achievements
+  skillProgression    Json?    // Skill development over time
+  industryPresence    Json?    // Industry-specific metrics
+  
+  // Comparative analytics
+  peerComparison      Json?    // Metrics compared to peers
+  industryBenchmarks  Json?    // Industry-standard comparisons
+  
+  // Predictive metrics
+  growthPotential     Float?   // Career growth prediction
+  engagementTrends    Json?    // Trend analysis and predictions
+
   lastUpdated DateTime    @updatedAt
   profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 }
@@ -202,6 +233,69 @@ model ProfileEngagement {
   networkGrowth Json? // Network growth over time
 
   lastUpdated DateTime    @updatedAt
+  profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model ExpertiseArea {
+  id          String   @id @default(cuid())
+  profileId   String
+  area        String
+  level       Int      @default(1) // 1-5 expertise level
+  yearsOfExp  Int
+  description String?  @db.Text
+  highlights  String[]
+  verified    Boolean  @default(false)
+  
+  profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  endorsements ExpertiseEndorsement[]
+  
+  @@index([profileId])
+}
+
+model ExpertiseEndorsement {
+  id           String   @id @default(cuid())
+  expertiseId  String
+  endorserId   String
+  weight       Int      @default(1) // 1-5 endorsement weight
+  comment      String?
+  credentials  Json?    // Endorser's relevant credentials
+  createdAt    DateTime @default(now())
+  
+  expertise    ExpertiseArea @relation(fields: [expertiseId], references: [id], onDelete: Cascade)
+  endorser     User         @relation(fields: [endorserId], references: [id], onDelete: Cascade)
+  
+  @@index([expertiseId])
+  @@index([endorserId])
+}
+
+model VerificationBadge {
+  id          String   @id @default(cuid())
+  profileId   String
+  type        String   // e.g., "employment", "education", "certification"
+  issuerId    String   // Organization that issued the verification
+  issuerName  String
+  issueDate   DateTime
+  expiryDate  DateTime?
+  credential  String?  // Credential ID or reference
+  metadata    Json?    // Additional verification data
+  status      VerificationStatus @default(PENDING)
+  
+  profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  @@index([profileId])
+  @@index([type])
+  @@index([status])
+}
+
+model BrandKit {
+  id          String   @id @default(cuid())
+  profileId   String   @unique
+  colors      Json     // Primary, secondary, accent colors
+  fonts       Json     // Font families and sizes
+  logo        String?  // URL to personal/company logo
+  bannerImage String?  // URL to banner image
+  templates   Json?    // Custom section templates
+  
   profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 }
 
@@ -248,6 +342,9 @@ enum ProfileLayout {
   COMPACT
   CREATIVE
   MINIMAL
+  CUSTOM_GRID
+  PORTFOLIO
+  TIMELINE
 }
 
 enum AvatarStyle {
@@ -272,6 +369,13 @@ enum AchievementType {
   PATENT
   PRESENTATION
   OTHER
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
 }
 
 model Education {

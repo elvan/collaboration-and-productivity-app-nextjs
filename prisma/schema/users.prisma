@@ -90,6 +90,7 @@ model User {
   UserDevice       UserDevice[]
   profile          UserProfile?
   SkillEndorsement SkillEndorsement[]
+  ExpertiseEndorsement ExpertiseEndorsement[]
 
   @@index([email])
 }
