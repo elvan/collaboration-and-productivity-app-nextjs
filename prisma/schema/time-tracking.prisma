@@ -1,0 +1,20 @@
+model TimeTracking {
+  id        String    @id @default(cuid())
+  taskId    String
+  userId    String
+  startTime DateTime  @default(now())
+  endTime   DateTime?
+  duration  Int?      // Duration in seconds
+  status    String    // IN_PROGRESS, COMPLETED, DISCARDED
+  note      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([status])
+  @@index([startTime])
+}
