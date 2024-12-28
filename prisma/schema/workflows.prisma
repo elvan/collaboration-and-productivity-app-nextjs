@@ -1,0 +1,38 @@
+model Workflow {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  projectId   String
+  isActive    Boolean  @default(true)
+  steps       Json // Array of workflow steps
+  triggers    Json // Workflow triggers
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  automations WorkflowAutomation[]
+
+  @@index([projectId])
+  @@index([isActive])
+}
+
+model WorkflowAutomation {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  projectId   String
+  workflowId  String
+  triggerType String // on_status_change, on_priority_change, etc.
+  conditions  Json? // Conditions that must be met
+  actions     Json // Actions to perform
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workflow Workflow @relation(fields: [workflowId], references: [id])
+
+  @@index([projectId])
+  @@index([workflowId])
+  @@index([isActive])
+}

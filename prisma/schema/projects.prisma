@@ -1,0 +1,98 @@
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  workspaceId String
+  teamId      String?
+  ownerId     String
+  status      String   @default("active") // active, archived, completed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  team      Team?           @relation(fields: [teamId], references: [id])
+  owner     User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  members   ProjectMember[]
+
+  // Task Management
+  tasks          Task[]
+  labels         Label[]
+  taskTypes      TaskType[]
+  taskStatuses   TaskStatus[]
+  taskPriorities TaskPriority[]
+  taskTemplates  TaskTemplate[]
+  taskLists      TaskList[]
+  taskTags       TaskTag[]
+
+  // Workflow & Automation
+  workflows           Workflow[]
+  priorityRules       PriorityRule[]
+  workflowAutomations WorkflowAutomation[]
+
+  // Project Features
+  customFields   CustomField[]
+  webhooks       Webhook[]
+  emailTemplates EmailTemplate[]
+
+  // Activity & Notifications
+  activities    Activity[]
+  notifications Notification[]
+  invitations   ProjectInvitation[]
+
+  // Integrations
+  integrations Integration[]
+
+  @@index([workspaceId])
+  @@index([teamId])
+  @@index([ownerId])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String // admin, member
+  joinedAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model ProjectInvitation {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invitedById   String
+  invitedBy     User     @relation("SentInvitations", fields: [invitedById], references: [id])
+  invitedUserId String
+  invitedUser   User     @relation("ReceivedInvitations", fields: [invitedUserId], references: [id])
+  status        String   @default("pending") // pending, accepted, declined
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([invitedById])
+  @@index([invitedUserId])
+}
+
+model PriorityRule {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  projectId   String
+  conditions  Json // Serialized rule conditions
+  actions     Json // Actions to take when conditions are met
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([isActive])
+}

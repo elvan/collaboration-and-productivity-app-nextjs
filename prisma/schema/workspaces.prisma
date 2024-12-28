@@ -1,0 +1,48 @@
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  owner     User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  members   WorkspaceMember[]
+  teams     Team[]
+  projects  Project[]
+  analytics WorkspaceAnalytics?
+
+  @@index([ownerId])
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String // admin, member
+  joinedAt    DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model WorkspaceAnalytics {
+  id             String   @id @default(cuid())
+  workspaceId    String   @unique
+  activeUsers    Int      @default(0)
+  taskCount      Int      @default(0)
+  completedTasks Int      @default(0)
+  documentCount  Int      @default(0)
+  commentCount   Int      @default(0)
+  storageUsed    BigInt   @default(0) // in bytes
+  lastUpdated    DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+}

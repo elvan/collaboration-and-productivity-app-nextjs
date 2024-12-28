@@ -1,0 +1,44 @@
+model EmailLog {
+  id          String    @id @default(cuid())
+  userId      String
+  templateId  String?
+  subject     String
+  content     String    @db.Text
+  status      String // sent, delivered, failed
+  error       String?
+  metadata    Json?
+  sentAt      DateTime  @default(now())
+  deliveredAt DateTime?
+
+  user                   User                  @relation("ReceivedEmails", fields: [userId], references: [id])
+  template               EmailTemplate?        @relation(fields: [templateId], references: [id])
+  task                   Task?                 @relation(fields: [taskId], references: [id])
+  comment                Comment?              @relation(fields: [commentId], references: [id])
+  taskId                 String?
+  commentId              String?
+  NotificationTemplate   NotificationTemplate? @relation(fields: [notificationTemplateId], references: [id])
+  notificationTemplateId String?
+
+  @@index([userId])
+  @@index([templateId])
+  @@index([status])
+  @@index([sentAt])
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String
+  body      String   @db.Text
+  events    Json // Array of event names
+  enabled   Boolean  @default(true)
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs    EmailLog[]
+
+  @@index([projectId])
+  @@index([enabled])
+}

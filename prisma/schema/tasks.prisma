@@ -1,0 +1,274 @@
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("todo")
+  priority    String    @default("medium")
+  dueDate     DateTime?
+  projectId   String
+  assigneeId  String?
+  createdById String
+  parentId    String?
+  listId      String?
+  typeId      String?
+  statusId    String?
+  priorityId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent    Task?   @relation("TaskDependencies", fields: [parentId], references: [id])
+  children  Task[]  @relation("TaskDependencies")
+  assignee  User?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy User    @relation("TaskCreator", fields: [createdById], references: [id])
+
+  labels       Label[]
+  customFields CustomField[]
+  customValues CustomFieldValue[]
+  checklists   Checklist[]
+  taskList     TaskList?           @relation(fields: [listId], references: [id])
+  recurring    RecurringTask?
+  taskType     TaskType?           @relation(fields: [typeId], references: [id])
+  taskStatus   TaskStatus?         @relation(fields: [statusId], references: [id])
+  taskPriority TaskPriority?       @relation(fields: [priorityId], references: [id])
+  taskTags     TaskTagAssignment[]
+
+  dependentOn  TaskDependency[] @relation("DependentTasks")
+  dependedOnBy TaskDependency[] @relation("BlockingTasks")
+
+  activities  Activity[]
+  comments    Comment[]
+  timeEntries TimeEntry[]
+  mentions    Mention[]
+  attachments Attachment[]
+
+  notifications Notification[]
+  emailLogs     EmailLog[]
+  taskListItems TaskListItem[]
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([createdById])
+  @@index([parentId])
+  @@index([listId])
+  @@index([typeId])
+  @@index([statusId])
+  @@index([priorityId])
+}
+
+model TaskList {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  viewType    String // "list", "board", "calendar", "gantt"
+  filters     Json? // Saved filters
+  sortOrder   Json? // Saved sort order
+  groupBy     String? // Field to group by
+  projectId   String
+  parentId    String?
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      TaskList?      @relation("TaskListHierarchy", fields: [parentId], references: [id])
+  children    TaskList[]     @relation("TaskListHierarchy")
+  tasks       TaskListItem[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  Task        Task[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model TaskListItem {
+  id        String   @id @default(cuid())
+  taskId    String
+  listId    String
+  position  Float // For ordering within list
+  pinned    Boolean  @default(false)
+  hidden    Boolean  @default(false)
+  metadata  Json?
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  list      TaskList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([taskId, listId])
+  @@index([taskId])
+  @@index([listId])
+  @@index([position])
+}
+
+model TaskTag {
+  id          String              @id @default(cuid())
+  name        String
+  color       String
+  icon        String?
+  description String?
+  projectId   String
+  parentId    String?
+  project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      TaskTag?            @relation("TaskTagHierarchy", fields: [parentId], references: [id])
+  children    TaskTag[]           @relation("TaskTagHierarchy")
+  tasks       TaskTagAssignment[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model TaskTagAssignment {
+  id        String   @id @default(cuid())
+  taskId    String
+  tagId     String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag       TaskTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([taskId, tagId])
+  @@index([taskId])
+  @@index([tagId])
+}
+
+model TaskType {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String
+  projectId   String
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  fields      CustomField[]
+  templates   TaskTemplate[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model TaskStatus {
+  id          String   @id @default(cuid())
+  name        String
+  color       String
+  icon        String?
+  description String?
+  category    String // "todo", "in_progress", "done", "canceled"
+  position    Int // For ordering within category
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([category])
+}
+
+model TaskPriority {
+  id          String   @id @default(cuid())
+  name        String
+  level       Int // 1-5 for priority levels
+  color       String
+  icon        String?
+  description String?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@index([level])
+}
+
+model TaskTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  icon          String?
+  color         String?
+  typeId        String
+  type          TaskType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defaultValues Json? // Default values for custom fields
+  checklists    Json? // Predefined checklists
+  attachments   Json? // Template attachments
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([typeId, name])
+  @@index([typeId])
+  @@index([projectId])
+}
+
+model TaskDependency {
+  id          String   @id @default(cuid())
+  taskId      String
+  dependsOnId String
+  type        String // blocks, blocked_by, relates_to, etc.
+  metadata    Json?
+  task        Task     @relation("DependentTasks", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn   Task     @relation("BlockingTasks", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([taskId, dependsOnId])
+}
+
+model RecurringTask {
+  id         String    @id @default(cuid())
+  taskId     String    @unique
+  frequency  String // daily, weekly, monthly, custom
+  interval   Int // e.g., every 2 weeks
+  daysOfWeek Int[] // [1,3,5] for Mon,Wed,Fri
+  monthDay   Int? // day of month for monthly
+  endDate    DateTime?
+  lastRun    DateTime?
+  nextRun    DateTime?
+  metadata   Json?
+  task       Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([frequency])
+  @@index([nextRun])
+}
+
+model TimeEntry {
+  id          String    @id @default(cuid())
+  taskId      String
+  userId      String
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int? // Duration in minutes
+  description String?
+  metadata    Json?
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+model Label {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#000000")
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@index([projectId])
+}

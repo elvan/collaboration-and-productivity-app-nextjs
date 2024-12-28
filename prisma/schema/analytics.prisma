@@ -1,0 +1,16 @@
+model Analytics {
+  id        String   @id @default(cuid())
+  type      String // task, project, user
+  entityId  String // ID of the entity being analyzed
+  metric    String // completion_rate, time_spent, etc.
+  value     Float
+  period    String // daily, weekly, monthly
+  startDate DateTime
+  endDate   DateTime
+  metadata  Json?
+
+  @@unique([type, entityId, metric, period, startDate])
+  @@index([type, entityId])
+  @@index([metric])
+  @@index([period, startDate])
+}

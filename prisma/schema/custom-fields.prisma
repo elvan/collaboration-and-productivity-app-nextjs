@@ -1,0 +1,40 @@
+model CustomField {
+  id           String             @id @default(cuid())
+  name         String
+  description  String?
+  type         String // text, number, date, select, etc.
+  required     Boolean            @default(false)
+  options      Json? // For select/multiselect fields
+  defaultValue Json?
+  placeholder  String?
+  validation   Json? // Validation rules
+  position     Int
+  taskTypeId   String
+  taskType     TaskType           @relation(fields: [taskTypeId], references: [id], onDelete: Cascade)
+  values       CustomFieldValue[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  Project      Project?           @relation(fields: [projectId], references: [id])
+  projectId    String?
+  Task         Task?              @relation(fields: [taskId], references: [id])
+  taskId       String?
+
+  @@unique([taskTypeId, name])
+  @@index([taskTypeId])
+  @@index([type])
+}
+
+model CustomFieldValue {
+  id        String      @id @default(cuid())
+  value     Json
+  taskId    String
+  fieldId   String
+  task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  field     CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([taskId, fieldId])
+  @@index([taskId])
+  @@index([fieldId])
+}

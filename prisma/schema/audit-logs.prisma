@@ -1,0 +1,17 @@
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String // create, update, delete
+  entityType String // task, project, user
+  entityId   String
+  userId     String
+  changes    Json? // Before/after changes
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}

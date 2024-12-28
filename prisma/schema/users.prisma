@@ -1,0 +1,143 @@
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Auth relations
+  accounts Account[]
+  sessions Session[]
+
+  // Workspace relations
+  workspaces      WorkspaceMember[]
+  ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
+
+  // Team relations
+  teams      TeamMember[]
+  ownedTeams Team[]       @relation("TeamOwner")
+
+  // Project relations
+  projects            ProjectMember[]
+  ownedProjects       Project[]           @relation("ProjectOwner")
+  sentInvitations     ProjectInvitation[] @relation("SentInvitations")
+  receivedInvitations ProjectInvitation[] @relation("ReceivedInvitations")
+
+  // Task relations
+  assignedTasks Task[] @relation("TaskAssignee")
+  createdTasks  Task[] @relation("TaskCreator")
+
+  // Activity & Comments
+  activities  Activity[]
+  comments    Comment[]
+  mentions    Mention[]
+  attachments Attachment[] @relation("Uploads")
+  timeEntries TimeEntry[]
+
+  // Notifications
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  pushSubscriptions       PushSubscription[]
+  notificationRateLimits  NotificationRateLimit[]
+  createdTemplates        NotificationTemplate[]        @relation("CreatedTemplates")
+  updatedTemplates        NotificationTemplate[]        @relation("UpdatedTemplates")
+  notificationAnalytics   NotificationAnalytics[]
+  notificationStats       NotificationStats[]
+  notificationBatches     NotificationBatch[]
+  batchingRules           NotificationBatchingRule[]
+  notificationFilters     NotificationFilter[]
+  versionCreator          NotificationTemplateVersion[] @relation("VersionCreator")
+  testCreator             ABTest[]                      @relation("TestCreator")
+  notificationCreator     ScheduledNotification[]       @relation("NotificationCreator")
+  campaignCreator         Campaign[]                    @relation("CampaignCreator")
+
+  // Calendar & Email
+  calendarIntegrations CalendarIntegration[]
+  emailLogs            EmailLog[]            @relation("ReceivedEmails")
+
+  // Audit & Analytics
+  auditLogs                   AuditLog[]
+  bulkActions                 BulkAction[]
+  NotificationTemplateVersion NotificationTemplateVersion[]
+  ABTest                      ABTest[]
+  ABTestEvent                 ABTestEvent[]
+  ScheduledNotification       ScheduledNotification[]
+  TemplateAnalytics           TemplateAnalytics[]
+  Campaign                    Campaign[]
+  CampaignEvent               CampaignEvent[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  token     String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token, userId])
+  @@index([userId])
+  @@index([token])
+}
+
+model BulkAction {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String // markAsRead, markAsUnread, dismiss, delete
+  status      String // pending, processing, completed, failed
+  total       Int       @default(0)
+  processed   Int       @default(0)
+  failed      Int       @default(0)
+  filter      Json? // Filter conditions for the bulk action
+  error       String? // Error message if failed
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
