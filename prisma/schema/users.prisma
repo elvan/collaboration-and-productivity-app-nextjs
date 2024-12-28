@@ -88,6 +88,7 @@ model User {
   UserSecurity UserSecurity?
   UserActivity UserActivity[]
   UserDevice   UserDevice[]
+  profile      UserProfile?
 
   @@index([email])
 }

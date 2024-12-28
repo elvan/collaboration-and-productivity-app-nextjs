@@ -1,0 +1,113 @@
+// User Profile Models
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  
+  // Professional Info
+  title           String?
+  company         String?
+  department      String?
+  jobRole         String?
+  yearsExperience Int?
+  
+  // Contact Info
+  phone           String?
+  alternateEmail  String?
+  timezone        String?
+  
+  // Social Media
+  linkedIn        String?
+  twitter        String?
+  github         String?
+  
+  // Profile Details
+  headline       String?   @db.Text
+  about          String?   @db.Text
+  skills         String[] // Array of skill tags
+  interests      String[] // Array of interest areas
+  
+  // Profile Settings
+  visibility     ProfileVisibility @default(PUBLIC)
+  showEmail      Boolean          @default(false)
+  showPhone      Boolean          @default(false)
+  showLocation   Boolean          @default(true)
+  
+  // Professional Background
+  education      Education[]
+  experience     Experience[]
+  certifications Certification[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+model Education {
+  id            String   @id @default(cuid())
+  profileId     String
+  institution   String
+  degree        String?
+  fieldOfStudy  String?
+  startDate     DateTime
+  endDate       DateTime?
+  current       Boolean  @default(false)
+  description   String?  @db.Text
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  @@index([profileId])
+}
+
+model Experience {
+  id          String   @id @default(cuid())
+  profileId   String
+  company     String
+  title       String
+  location    String?
+  startDate   DateTime
+  endDate     DateTime?
+  current     Boolean  @default(false)
+  description String?  @db.Text
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  @@index([profileId])
+}
+
+model Certification {
+  id           String   @id @default(cuid())
+  profileId    String
+  name         String
+  issuer       String
+  issueDate    DateTime
+  expiryDate   DateTime?
+  credentialId String?
+  url          String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  @@index([profileId])
+}
+
+enum ProfileVisibility {
+  PRIVATE
+  TEAM
+  WORKSPACE
+  PUBLIC
+}
