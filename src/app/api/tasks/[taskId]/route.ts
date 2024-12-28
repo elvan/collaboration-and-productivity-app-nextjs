@@ -10,7 +10,7 @@ import {
   updateTaskStatus,
   updateTaskPriority,
   TaskUpdateInput,
-} from "@/lib/tasks"
+} from "@/lib/tasks/tasks"
 
 const taskUpdateSchema = z.object({
   title: z.string().min(1).max(255).optional(),

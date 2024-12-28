@@ -81,4 +81,34 @@ export const taskService = {
 
     return response.json();
   },
+
+  async deleteTask(projectId: string, taskId: string): Promise<void> {
+    const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete task");
+    }
+  },
+
+  async getTaskCustomFields(projectId: string): Promise<CustomField[]> {
+    const response = await fetch(`/api/projects/${projectId}/custom-fields`);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch custom fields");
+    }
+
+    return response.json();
+  },
+
+  async getTaskCustomFieldValues(taskId: string): Promise<any[]> {
+    const response = await fetch(`/api/tasks/${taskId}/custom-field-values`);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch custom field values");
+    }
+
+    return response.json();
+  },
 };

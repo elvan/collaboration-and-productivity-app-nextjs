@@ -33,7 +33,7 @@ import {
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
-import { taskService } from "@/lib/task-service"
+import { getTasks, taskService } from "@/lib/tasks/task-service"
 import toast from "@/lib/toast"
 
 interface Task {
@@ -81,7 +81,7 @@ export function TaskList({
     const loadTasks = async () => {
       try {
         setIsLoading(true);
-        const fetchedTasks = await taskService.getTasks(projectId);
+        const fetchedTasks = await getTasks(projectId);
         setTasks(fetchedTasks);
       } catch (error) {
         console.error("Failed to load tasks:", error);

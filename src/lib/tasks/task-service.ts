@@ -71,7 +71,13 @@ export async function createTask(data: TaskCreateInput) {
       },
       parent: true,
       subtasks: true,
-      project: true,
+      project: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+        },
+      },
     },
   })
 
@@ -84,6 +90,7 @@ export async function createTask(data: TaskCreateInput) {
     metadata: {
       taskTitle: task.title,
       projectId: task.projectId,
+      projectName: task.project.name,
       assigneeId: task.assigneeId,
     },
     userId: data.userId,
@@ -115,7 +122,13 @@ export async function updateTask(
       },
       parent: true,
       subtasks: true,
-      project: true,
+      project: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+        },
+      },
     },
   })
 
@@ -127,6 +140,8 @@ export async function updateTask(
     entityId: task.id,
     metadata: {
       taskTitle: task.title,
+      projectId: task.projectId,
+      projectName: task.project.name,
       changes: data,
     },
     userId,
@@ -140,7 +155,13 @@ export async function deleteTask(id: string, userId: string) {
   const task = await prisma.task.delete({
     where: { id },
     include: {
-      project: true,
+      project: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+        },
+      },
     },
   })
 
@@ -152,6 +173,8 @@ export async function deleteTask(id: string, userId: string) {
     entityId: task.id,
     metadata: {
       taskTitle: task.title,
+      projectId: task.projectId,
+      projectName: task.project.name,
     },
     userId,
     workspaceId: task.project.workspaceId,
@@ -187,7 +210,18 @@ export async function getTask(id: string) {
       },
       dependencies: true,
       dependents: true,
-      project: true,
+      project: {
+        select: {
+          id: true,
+          name: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
   })
 }
@@ -231,7 +265,6 @@ export async function getTasks(options: TaskQueryOptions) {
             image: true,
           },
         },
-        parent: true,
         _count: {
           select: {
             subtasks: true,
@@ -256,32 +289,45 @@ export async function getTasks(options: TaskQueryOptions) {
   }
 }
 
-export async function updateTaskDependencies(
-  taskId: string,
-  dependencies: string[],
+export async function assignTask(
+  id: string,
+  assigneeId: string | null,
   userId: string
 ) {
   const task = await prisma.task.update({
-    where: { id: taskId },
-    data: {
-      dependencies: {
-        connect: dependencies.map((id) => ({ id })),
-      },
-    },
+    where: { id },
+    data: { assigneeId },
     include: {
-      project: true,
+      assignee: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+      project: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+        },
+      },
     },
   })
 
   // Log activity
   await logActivity({
-    type: 'task.dependencies_updated',
-    action: 'updated',
-    entityType: 'task',
+    type: "task.assigned",
+    action: "assigned",
+    entityType: "task",
     entityId: task.id,
     metadata: {
       taskTitle: task.title,
-      dependencies,
+      projectId: task.projectId,
+      projectName: task.project.name,
+      assigneeId: assigneeId,
+      assigneeName: task.assignee?.name,
     },
     userId,
     workspaceId: task.project.workspaceId,
@@ -290,30 +336,90 @@ export async function updateTaskDependencies(
   return task
 }
 
-export async function moveTask(
-  taskId: string,
-  targetProjectId: string,
+export async function updateTaskStatus(
+  id: string,
+  status: string,
   userId: string
 ) {
   const task = await prisma.task.update({
-    where: { id: taskId },
-    data: {
-      projectId: targetProjectId,
-    },
+    where: { id },
+    data: { status },
     include: {
-      project: true,
+      assignee: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+      project: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+        },
+      },
     },
   })
 
   // Log activity
   await logActivity({
-    type: 'task.moved',
-    action: 'moved',
-    entityType: 'task',
+    type: "task.status_updated",
+    action: "updated",
+    entityType: "task",
     entityId: task.id,
     metadata: {
       taskTitle: task.title,
-      targetProjectId,
+      projectId: task.projectId,
+      projectName: task.project.name,
+      status,
+    },
+    userId,
+    workspaceId: task.project.workspaceId,
+  })
+
+  return task
+}
+
+export async function updateTaskPriority(
+  id: string,
+  priority: string,
+  userId: string
+) {
+  const task = await prisma.task.update({
+    where: { id },
+    data: { priority },
+    include: {
+      assignee: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      },
+      project: {
+        select: {
+          id: true,
+          name: true,
+          workspaceId: true,
+        },
+      },
+    },
+  })
+
+  // Log activity
+  await logActivity({
+    type: "task.priority_updated",
+    action: "updated",
+    entityType: "task",
+    entityId: task.id,
+    metadata: {
+      taskTitle: task.title,
+      projectId: task.projectId,
+      projectName: task.project.name,
+      priority,
     },
     userId,
     workspaceId: task.project.workspaceId,

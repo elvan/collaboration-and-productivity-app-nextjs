@@ -6,7 +6,7 @@ import {
   createTask,
   filterTasks,
   TaskCreateInput,
-} from "@/lib/tasks"
+} from "@/lib/tasks/tasks"
 
 const taskCreateSchema = z.object({
   title: z.string().min(1).max(255),
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url)
     const projectId = searchParams.get("projectId")
-    
+
     if (!projectId) {
       return new NextResponse("Project ID is required", { status: 400 })
     }
