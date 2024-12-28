@@ -83,12 +83,13 @@ model User {
   bulkActions                 BulkAction[]
   notificationTemplateVersion NotificationTemplateVersion[]
 
-  abTest       ABTest[]
-  abTestEvent  ABTestEvent[]
-  UserSecurity UserSecurity?
-  UserActivity UserActivity[]
-  UserDevice   UserDevice[]
-  profile      UserProfile?
+  abTest           ABTest[]
+  abTestEvent      ABTestEvent[]
+  UserSecurity     UserSecurity?
+  UserActivity     UserActivity[]
+  UserDevice       UserDevice[]
+  profile          UserProfile?
+  SkillEndorsement SkillEndorsement[]
 
   @@index([email])
 }
