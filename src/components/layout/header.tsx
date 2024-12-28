@@ -71,6 +71,18 @@ export function Header() {
                 >
                   Projects
                 </Link>
+                <Link
+                  href='/dashboard/calendar'
+                  className='transition-colors hover:text-foreground/80'
+                >
+                  Calendar
+                </Link>
+                <Link
+                  href='/dashboard/documents'
+                  className='transition-colors hover:text-foreground/80'
+                >
+                  Documents
+                </Link>
               </>
             ) : null}
           </nav>
