@@ -1,46 +1,13 @@
-import { Metadata } from "next"
-import { getServerSession } from "next-auth"
-import { redirect } from "next/navigation"
+"use client"
 
-import { authOptions } from "@/lib/auth"
-import { hasPermission } from "@/lib/permissions"
-import { prisma } from "@/lib/prisma"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import { DataTable } from "./data-table"
 import { columns } from "./columns"
-import { Button } from "@/components/ui/button"
 import { UserPlus } from "lucide-react"
 
-export const metadata: Metadata = {
-  title: "User Management",
-  description: "Manage users, roles, and permissions",
-}
-
-async function getUsers() {
-  const users = await prisma.user.findMany({
-    include: {
-      userRole: {
-        include: {
-          role: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  })
-
-  return users
-}
-
-export default async function UsersPage() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) redirect("/login")
-
-  // Check if user has permission to view users
-  const canViewUsers = await hasPermission(session.user.id, "READ", "USERS")
-  if (!canViewUsers) redirect("/dashboard")
-
-  const users = await getUsers()
+export default function UsersPage() {
+  const router = useRouter()
 
   return (
     <div className="hidden h-full flex-1 flex-col space-y-8 p-8 md:flex">
@@ -52,13 +19,13 @@ export default async function UsersPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button>
+          <Button onClick={() => router.push("/admin/users/new")}>
             <UserPlus className="mr-2 h-4 w-4" />
             Add User
           </Button>
         </div>
       </div>
-      <DataTable data={users} columns={columns} />
+      <DataTable columns={columns} />
     </div>
   )
 }

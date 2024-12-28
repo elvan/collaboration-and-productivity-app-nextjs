@@ -59,11 +59,11 @@ export function DataTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push(`/admin/users/${row.original.id}`)}>
           <Pen className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
           Edit
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push(`/admin/users/${row.original.id}/roles`)}>
           <Shield className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
           Manage Roles
         </DropdownMenuItem>

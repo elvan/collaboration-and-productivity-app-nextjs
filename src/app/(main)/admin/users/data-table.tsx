@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -15,7 +16,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-
 import {
   Table,
   TableBody,
@@ -24,18 +24,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-
 import { DataTablePagination } from "./data-table-pagination"
 import { DataTableToolbar } from "./data-table-toolbar"
+import { toast } from "@/components/ui/use-toast"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+}
+
+async function getUsers() {
+  const response = await fetch("/api/admin/users")
+  if (!response.ok) throw new Error("Failed to fetch users")
+  return response.json()
 }
 
 export function DataTable<TData, TValue>({
   columns,
-  data,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -45,8 +49,21 @@ export function DataTable<TData, TValue>({
   )
   const [sorting, setSorting] = React.useState<SortingState>([])
 
+  const { data: users = [], error } = useQuery({
+    queryKey: ["users"],
+    queryFn: getUsers,
+  })
+
+  if (error) {
+    toast({
+      title: "Error",
+      description: "Failed to fetch users. Please try again.",
+      variant: "destructive",
+    })
+  }
+
   const table = useReactTable({
-    data,
+    data: users,
     columns,
     state: {
       sorting,
