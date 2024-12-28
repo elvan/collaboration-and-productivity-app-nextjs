@@ -1,0 +1,224 @@
+// This is your Prisma schema file
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String
+  body      String   @db.Text
+  events    Json // Array of event names
+  enabled   Boolean  @default(true)
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs    EmailLog[]
+}
+
+model EmailLog {
+  id          String   @id @default(cuid())
+  templateId  String
+  recipientId String
+  taskId      String
+  commentId   String?
+  subject     String
+  content     String
+  status      String // sent, delivered, failed
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  template      NotificationTemplate @relation(fields: [templateId], references: [id])
+  recipient     User                 @relation("ReceivedEmails", fields: [recipientId], references: [id])
+  task          Task                 @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment       Comment?             @relation(fields: [commentId], references: [id])
+  EmailTemplate EmailTemplate[]
+
+  @@index([templateId])
+  @@index([recipientId])
+  @@index([taskId])
+  @@index([commentId])
+}
+
+model CalendarIntegration {
+  id           String    @id @default(cuid())
+  provider     String // google, outlook, ical
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  settings     Json?
+  enabled      Boolean   @default(true)
+  userId       String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Comment {
+  id        String     @id @default(cuid())
+  content   String
+  taskId    String
+  userId    String
+  replyToId String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  task      Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo   Comment?   @relation("CommentReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Comment[]  @relation("CommentReplies")
+  mentions  Mention[]
+  emailLogs EmailLog[]
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+model Mention {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  commentId String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  task    Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([commentId])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  name       String
+  url        String
+  type       String
+  size       Int
+  taskId     String
+  uploaderId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  task     Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader User @relation("Uploads", fields: [uploaderId], references: [id])
+
+  @@index([taskId])
+  @@index([uploaderId])
+}
+
+model Workflow {
+  id        String   @id @default(cuid())
+  name      String
+  projectId String
+  statuses  Json // Array of status objects with transitions
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  automations WorkflowAutomation[]
+}
+
+model Integration {
+  id         String    @id @default(cuid())
+  projectId  String
+  type       String // github, slack, jira
+  name       String
+  config     Json
+  status     String    @default("active")
+  lastSyncAt DateTime?
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  project  Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  webhooks Webhook[]
+  syncLogs IntegrationSyncLog[]
+
+  @@unique([projectId, type, name])
+  @@index([projectId, type])
+  @@index([status])
+}
+
+model IntegrationSyncLog {
+  id            String    @id @default(cuid())
+  integrationId String
+  type          String // full_sync, incremental
+  status        String // success, failed
+  error         String?
+  metadata      Json?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, type, status])
+  @@index([startedAt])
+}
+
+model Analytics {
+  id        String   @id @default(cuid())
+  type      String // task, project, user
+  entityId  String // ID of the entity being analyzed
+  metric    String // completion_rate, time_spent, etc.
+  value     Float
+  period    String // daily, weekly, monthly
+  startDate DateTime
+  endDate   DateTime
+  metadata  Json?
+
+  @@unique([type, entityId, metric, period, startDate])
+  @@index([type, entityId])
+  @@index([metric])
+  @@index([period, startDate])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String // create, update, delete
+  entityType String // task, project, user
+  entityId   String
+  userId     String
+  changes    Json? // Before/after changes
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model WorkspaceAnalytics {
+  id             String   @id @default(cuid())
+  workspaceId    String   @unique
+  activeUsers    Int      @default(0)
+  taskCount      Int      @default(0)
+  completedTasks Int      @default(0)
+  documentCount  Int      @default(0)
+  commentCount   Int      @default(0)
+  storageUsed    BigInt   @default(0) // in bytes
+  lastUpdated    DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+}

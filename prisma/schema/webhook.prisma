@@ -1,0 +1,33 @@
+model Webhook {
+  id            String   @id @default(cuid())
+  integrationId String
+  url           String
+  secret        String?
+  events        String[] // Array of event types
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  integration Integration       @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+  Project     Project[]
+
+  @@index([integrationId])
+  @@index([active])
+}
+
+model WebhookDelivery {
+  id         String   @id @default(cuid())
+  webhookId  String
+  event      String
+  payload    Json
+  status     String // success, failed
+  statusCode Int?
+  error      String?
+  createdAt  DateTime @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, status])
+  @@index([createdAt])
+}
