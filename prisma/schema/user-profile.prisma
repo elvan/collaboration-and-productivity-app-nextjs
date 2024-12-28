@@ -4,16 +4,16 @@ model UserProfile {
   userId String @unique
 
   // Professional Info
-  title           String?
-  company         String?
-  department      String?
-  jobRole         String?
-  yearsExperience Int?
-  industry        String?
-  specializations String[]
-  languages       String[] // Professional languages
-  verifiedAt      DateTime?
-  verifiedBy      String? // Organization that verified the profile
+  title              String?
+  company            String?
+  department         String?
+  jobRole            String?
+  yearsExperience    Int?
+  industry           String?
+  specializations    String[]
+  languages          String[] // Professional languages
+  verifiedAt         DateTime?
+  verifiedBy         String? // Organization that verified the profile
   verificationBadges VerificationBadge[]
 
   // Contact Info
@@ -30,39 +30,44 @@ model UserProfile {
   blog      String?
 
   // Profile Details
-  headline     String?       @db.Text
-  about        String?       @db.Text
-  skills       Skill[] // Relation to skills with endorsements
-  interests    String[] // Array of interest areas
-  achievements Achievement[]
-  expertise    ExpertiseArea[]
-
+  headline            String?                @db.Text
+  about               String?                @db.Text
+  skills              Skill[] // Relation to skills with endorsements
+  interests           String[] // Array of interest areas
+  achievements        Achievement[]
+  expertise           ExpertiseArea[]
+  mentorship          MentorshipProfile?
+  speakingEngagements ProfessionalEvent[]
+  publications        Publication[]
+  knowledgeBase       KnowledgeBase?
+  contributions       Contribution[]
   // Profile Customization
-  theme          ProfileTheme  @default(SYSTEM)
-  layout         ProfileLayout @default(STANDARD)
-  accentColor    String? // Custom accent color
-  coverImage     String? // URL to cover image
-  avatarStyle    AvatarStyle   @default(CIRCLE)
-  featuredWork   Json? // Pinned/featured items
-  customSections Json? // User-defined sections
-  widgetLayout   Json? // Custom widget arrangement
-  customCss      String? // Custom CSS for profile
-  brandKit       BrandKit? // Custom branding
-
+  theme               ProfileTheme           @default(SYSTEM)
+  layout              ProfileLayout          @default(STANDARD)
+  accentColor         String? // Custom accent color
+  coverImage          String? // URL to cover image
+  avatarStyle         AvatarStyle            @default(CIRCLE)
+  featuredWork        Json? // Pinned/featured items
+  customSections      Json? // User-defined sections
+  widgetLayout        Json? // Custom widget arrangement
+  customCss           String? // Custom CSS for profile
+  brandKit            BrandKit? // Custom branding
+  accessibility       AccessibilitySettings?
+  localization        LocalizationSettings?
+  displayPreferences  DisplayPreferences?
   // Visibility Settings
-  visibility        ProfileVisibility @default(PUBLIC)
-  contactVisibility ContactVisibility @default(TEAM)
-  resumeVisibility  ResumeVisibility  @default(PRIVATE)
-  searchable        Boolean           @default(true)
-  showActivity      Boolean           @default(true)
-  showAchievements  Boolean           @default(true)
-  customPermissions Json? // Fine-grained visibility rules
+  visibility          ProfileVisibility      @default(PUBLIC)
+  contactVisibility   ContactVisibility      @default(TEAM)
+  resumeVisibility    ResumeVisibility       @default(PRIVATE)
+  searchable          Boolean                @default(true)
+  showActivity        Boolean                @default(true)
+  showAchievements    Boolean                @default(true)
+  customPermissions   Json? // Fine-grained visibility rules
 
   // Professional Background
   education      Education[]
   experience     Experience[]
   certifications Certification[]
-  publications   Publication[]
   projects       ProjectShowcase[]
 
   // Analytics & Engagement
@@ -183,28 +188,60 @@ model ProfileAnalytics {
   searchRankings Json? // Search result positions
 
   // Enhanced metrics
-  skillEndorsements    Json?    // Endorsement analytics by skill
-  expertiseGrowth      Json?    // Expertise development over time
-  connectionQuality    Float?   // Score based on connection relevance
-  influenceScore      Float?   // Professional influence metric
-  
+  skillEndorsements Json? // Endorsement analytics by skill
+  expertiseGrowth   Json? // Expertise development over time
+  connectionQuality Float? // Score based on connection relevance
+  influenceScore    Float? // Professional influence metric
+
   // Interaction patterns
-  peakActivityTimes   Json?    // Most active times
-  interactionTypes    Json?    // Types of profile interactions
-  referralSources     Json?    // Traffic sources
-  
+  peakActivityTimes Json? // Most active times
+  interactionTypes  Json? // Types of profile interactions
+  referralSources   Json? // Traffic sources
+
   // Career progression
-  careerMilestones    Json?    // Timeline of achievements
-  skillProgression    Json?    // Skill development over time
-  industryPresence    Json?    // Industry-specific metrics
-  
+  careerMilestones Json? // Timeline of achievements
+  skillProgression Json? // Skill development over time
+  industryPresence Json? // Industry-specific metrics
+
   // Comparative analytics
-  peerComparison      Json?    // Metrics compared to peers
-  industryBenchmarks  Json?    // Industry-standard comparisons
-  
+  peerComparison     Json? // Metrics compared to peers
+  industryBenchmarks Json? // Industry-standard comparisons
+
   // Predictive metrics
-  growthPotential     Float?   // Career growth prediction
-  engagementTrends    Json?    // Trend analysis and predictions
+  growthPotential  Float? // Career growth prediction
+  engagementTrends Json? // Trend analysis and predictions
+
+  // Advanced Analytics
+  contentEngagement  Json? // Content-specific engagement metrics
+  audienceInsights   Json? // Detailed audience demographics
+  competencyAnalysis Json? // Skills and expertise gap analysis
+  networkValue       Float? // Network strength indicator
+  thoughtLeadership  Json? // Content impact metrics
+
+  // Learning Analytics
+  learningProgress Json? // Skill acquisition rate
+  knowledgeGaps    Json? // Identified areas for improvement
+  learningStyle    String? // Preferred learning methods
+
+  // Mentor Analytics
+  mentorshipImpact Json? // Mentorship effectiveness metrics
+  menteeProgress   Json? // Mentee success tracking
+  mentorshipROI    Float? // Return on mentorship investment
+
+  // Event Analytics
+  eventPerformance Json? // Speaking engagement metrics
+  audienceFeedback Json? // Aggregated feedback scores
+  contentReach     Json? // Content distribution metrics
+
+  // Predictive Analytics
+  careerTrajectory Json? // Career path predictions
+  skillsDemand     Json? // Market demand for skills
+  networkGrowth    Json? // Network expansion predictions
+
+  // Competitive Analytics
+  marketPosition   Json? // Industry standing
+  peerBenchmarking Json? // Detailed peer comparisons
+  industryTrends   Json? // Relevant industry movements
 
   lastUpdated DateTime    @updatedAt
   profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -245,58 +282,438 @@ model ExpertiseArea {
   description String?  @db.Text
   highlights  String[]
   verified    Boolean  @default(false)
-  
-  profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  profile      UserProfile            @relation(fields: [profileId], references: [id], onDelete: Cascade)
   endorsements ExpertiseEndorsement[]
-  
+
   @@index([profileId])
 }
 
 model ExpertiseEndorsement {
-  id           String   @id @default(cuid())
-  expertiseId  String
-  endorserId   String
-  weight       Int      @default(1) // 1-5 endorsement weight
-  comment      String?
-  credentials  Json?    // Endorser's relevant credentials
-  createdAt    DateTime @default(now())
-  
-  expertise    ExpertiseArea @relation(fields: [expertiseId], references: [id], onDelete: Cascade)
-  endorser     User         @relation(fields: [endorserId], references: [id], onDelete: Cascade)
-  
+  id          String   @id @default(cuid())
+  expertiseId String
+  endorserId  String
+  weight      Int      @default(1) // 1-5 endorsement weight
+  comment     String?
+  credentials Json? // Endorser's relevant credentials
+  createdAt   DateTime @default(now())
+
+  expertise ExpertiseArea @relation(fields: [expertiseId], references: [id], onDelete: Cascade)
+  endorser  User          @relation(fields: [endorserId], references: [id], onDelete: Cascade)
+
   @@index([expertiseId])
   @@index([endorserId])
 }
 
 model VerificationBadge {
-  id          String   @id @default(cuid())
-  profileId   String
-  type        String   // e.g., "employment", "education", "certification"
-  issuerId    String   // Organization that issued the verification
-  issuerName  String
-  issueDate   DateTime
-  expiryDate  DateTime?
-  credential  String?  // Credential ID or reference
-  metadata    Json?    // Additional verification data
-  status      VerificationStatus @default(PENDING)
-  
-  profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  
+  id         String             @id @default(cuid())
+  profileId  String
+  type       String // e.g., "employment", "education", "certification"
+  issuerId   String // Organization that issued the verification
+  issuerName String
+  issueDate  DateTime
+  expiryDate DateTime?
+  credential String? // Credential ID or reference
+  metadata   Json? // Additional verification data
+  status     VerificationStatus @default(PENDING)
+
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
   @@index([profileId])
   @@index([type])
   @@index([status])
 }
 
 model BrandKit {
-  id          String   @id @default(cuid())
-  profileId   String   @unique
-  colors      Json     // Primary, secondary, accent colors
-  fonts       Json     // Font families and sizes
-  logo        String?  // URL to personal/company logo
-  bannerImage String?  // URL to banner image
-  templates   Json?    // Custom section templates
-  
-  profile     UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  id          String  @id @default(cuid())
+  profileId   String  @unique
+  colors      Json // Primary, secondary, accent colors
+  fonts       Json // Font families and sizes
+  logo        String? // URL to personal/company logo
+  bannerImage String? // URL to banner image
+  templates   Json? // Custom section templates
+
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model MentorshipProfile {
+  id           String                  @id @default(cuid())
+  profileId    String                  @unique
+  status       MentorshipStatus        @default(AVAILABLE)
+  specialties  String[]
+  experience   Int // Years of mentoring experience
+  menteeCount  Int                     @default(0)
+  successRate  Float?
+  methodology  String?                 @db.Text
+  availability Json // Availability schedule
+  testimonials MentorshipTestimonial[]
+  programs     MentorshipProgram[]
+
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model MentorshipTestimonial {
+  id           String   @id @default(cuid())
+  mentorshipId String
+  menteeId     String
+  rating       Int // 1-5 rating
+  review       String   @db.Text
+  impact       String?  @db.Text
+  duration     Int // Mentorship duration in months
+  createdAt    DateTime @default(now())
+
+  mentorship MentorshipProfile @relation(fields: [mentorshipId], references: [id], onDelete: Cascade)
+  mentee     User              @relation(fields: [menteeId], references: [id])
+
+  @@index([mentorshipId])
+  @@index([menteeId])
+}
+
+model MentorshipProgram {
+  id            String    @id @default(cuid())
+  mentorshipId  String
+  title         String
+  description   String    @db.Text
+  duration      Int // Program duration in weeks
+  capacity      Int // Maximum number of mentees
+  objectives    String[]
+  curriculum    Json // Program structure
+  prerequisites String[]
+  price         Float? // Optional program fee
+  startDate     DateTime?
+
+  mentorship MentorshipProfile @relation(fields: [mentorshipId], references: [id], onDelete: Cascade)
+
+  @@index([mentorshipId])
+}
+
+model ProfessionalEvent {
+  id           String                @id @default(cuid())
+  profileId    String
+  title        String
+  type         ProfessionalEventType
+  organization String
+  date         DateTime
+  location     String?
+  description  String?               @db.Text
+  audience     String?
+  impact       Int? // Audience size
+  recording    String? // URL to recording
+  slides       String? // URL to slides
+  feedback     Json? // Audience feedback
+  topics       String[]
+
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([type])
+}
+
+model AccessibilitySettings {
+  id             String  @id @default(cuid())
+  profileId      String  @unique
+  highContrast   Boolean @default(false)
+  fontSize       Float   @default(1.0)
+  fontFamily     String?
+  reduceMotion   Boolean @default(false)
+  screenReader   Boolean @default(false)
+  colorBlindMode Boolean @default(false)
+  keyboardNav    Boolean @default(false)
+  customSettings Json?
+
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model LocalizationSettings {
+  id              String   @id @default(cuid())
+  profileId       String   @unique
+  primaryLanguage String
+  languages       String[] // Supported languages
+  dateFormat      String   @default("YYYY-MM-DD")
+  timeFormat      String   @default("24h")
+  timezone        String
+  currency        String   @default("USD")
+  translations    Json? // Custom translations
+
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model DisplayPreferences {
+  id             String         @id @default(cuid())
+  profileId      String         @unique
+  defaultView    ViewMode       @default(STANDARD)
+  sectionOrder   String[] // Ordered list of section IDs
+  hiddenSections String[] // List of hidden section IDs
+  compactMode    Boolean        @default(false)
+  animationLevel AnimationLevel @default(MODERATE)
+  cardStyle      CardStyle      @default(MODERN)
+  gridColumns    Int            @default(2)
+
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeBase {
+  id            String                  @id @default(cuid())
+  profileId     String                  @unique
+  articles      KnowledgeArticle[]
+  resources     Resource[]
+  collections   KnowledgeCollection[]
+  collaborators KnowledgeCollaborator[]
+  topics        Topic[]
+  stats         KnowledgeStats?
+
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeArticle {
+  id              String               @id @default(cuid())
+  knowledgeBaseId String
+  title           String
+  content         String               @db.Text
+  status          ArticleStatus        @default(DRAFT)
+  visibility      ContentVisibility    @default(PUBLIC)
+  tags            String[]
+  category        String?
+  version         Int                  @default(1)
+  revisions       ArticleRevision[]
+  contributors    ArticleContributor[]
+  references      String[] // Citations and references
+  readingTime     Int? // Estimated reading time in minutes
+  complexity      ComplexityLevel      @default(INTERMEDIATE)
+  prerequisites   String[]
+  feedback        ArticleFeedback[]
+  views           Int                  @default(0)
+  shares          Int                  @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  knowledgeBase KnowledgeBase         @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  collections   KnowledgeCollection[]
+  topics        Topic[]
+
+  @@index([knowledgeBaseId])
+}
+
+model ArticleRevision {
+  id             String       @id @default(cuid())
+  articleId      String
+  content        String       @db.Text
+  changeLog      String?      @db.Text
+  version        Int
+  createdBy      String
+  reviewedBy     String?
+  reviewStatus   ReviewStatus @default(PENDING)
+  reviewComments String?      @db.Text
+
+  createdAt DateTime @default(now())
+
+  article  KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author   User             @relation("RevisionAuthor", fields: [createdBy], references: [id])
+  reviewer User?            @relation("RevisionReviewer", fields: [reviewedBy], references: [id])
+
+  @@index([articleId])
+  @@index([createdBy])
+  @@index([reviewedBy])
+}
+
+model ArticleContributor {
+  id           String          @id @default(cuid())
+  articleId    String
+  userId       String
+  role         ContributorRole
+  contribution String?         @db.Text
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id])
+
+  @@index([articleId])
+  @@index([userId])
+}
+
+model ArticleFeedback {
+  id          String          @id @default(cuid())
+  articleId   String
+  userId      String
+  rating      Int // 1-5 rating
+  comment     String?         @db.Text
+  helpfulness Boolean?
+  expertise   ExpertiseLevel?
+
+  createdAt DateTime @default(now())
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id])
+
+  @@index([articleId])
+  @@index([userId])
+}
+
+model Resource {
+  id              String       @id @default(cuid())
+  knowledgeBaseId String
+  title           String
+  type            ResourceType
+  url             String?
+  content         String?      @db.Text
+  format          String?
+  size            Int? // Size in bytes
+  language        String?
+  license         String?
+  version         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  knowledgeBase KnowledgeBase         @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  collections   KnowledgeCollection[]
+  topics        Topic[]
+
+  @@index([knowledgeBaseId])
+}
+
+model KnowledgeCollection {
+  id              String             @id @default(cuid())
+  knowledgeBaseId String
+  title           String
+  description     String?            @db.Text
+  visibility      ContentVisibility  @default(PUBLIC)
+  articles        KnowledgeArticle[]
+  resources       Resource[]
+  topics          Topic[]
+  parent          String? // Parent collection ID
+  order           Int                @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeBaseId])
+}
+
+model Topic {
+  id              String                @id @default(cuid())
+  knowledgeBaseId String
+  name            String
+  description     String?               @db.Text
+  parent          String? // Parent topic ID
+  articles        KnowledgeArticle[]
+  resources       Resource[]
+  collections     KnowledgeCollection[]
+
+  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+
+  @@unique([knowledgeBaseId, name])
+  @@index([knowledgeBaseId])
+}
+
+model KnowledgeCollaborator {
+  id              String           @id @default(cuid())
+  knowledgeBaseId String
+  userId          String
+  role            CollaboratorRole
+  permissions     Json // Detailed access permissions
+
+  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id])
+
+  @@index([knowledgeBaseId])
+  @@index([userId])
+}
+
+model KnowledgeStats {
+  id              String @id @default(cuid())
+  knowledgeBaseId String @unique
+  totalArticles   Int    @default(0)
+  totalResources  Int    @default(0)
+  totalViews      Int    @default(0)
+  totalShares     Int    @default(0)
+  avgRating       Float  @default(0.0)
+  topContributors Json? // List of top contributors
+  popularTopics   Json? // Most viewed topics
+  engagement      Json? // Engagement metrics
+
+  updatedAt DateTime @updatedAt
+
+  knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+}
+
+model Contribution {
+  id          String            @id @default(cuid())
+  profileId   String
+  type        ContributionType
+  title       String
+  description String?           @db.Text
+  url         String?
+  impact      String?           @db.Text
+  date        DateTime
+  visibility  ContentVisibility @default(PUBLIC)
+
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([type])
+}
+
+model Education {
+  id           String    @id @default(cuid())
+  profileId    String
+  institution  String
+  degree       String?
+  fieldOfStudy String?
+  startDate    DateTime
+  endDate      DateTime?
+  current      Boolean   @default(false)
+  description  String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model Experience {
+  id          String    @id @default(cuid())
+  profileId   String
+  company     String
+  title       String
+  location    String?
+  startDate   DateTime
+  endDate     DateTime?
+  current     Boolean   @default(false)
+  description String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model Certification {
+  id           String    @id @default(cuid())
+  profileId    String
+  name         String
+  issuer       String
+  issueDate    DateTime
+  expiryDate   DateTime?
+  credentialId String?
+  url          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
 }
 
 enum ProfileVisibility {
@@ -378,61 +795,122 @@ enum VerificationStatus {
   EXPIRED
 }
 
-model Education {
-  id           String    @id @default(cuid())
-  profileId    String
-  institution  String
-  degree       String?
-  fieldOfStudy String?
-  startDate    DateTime
-  endDate      DateTime?
-  current      Boolean   @default(false)
-  description  String?   @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([profileId])
+enum ArticleStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
 }
 
-model Experience {
-  id          String    @id @default(cuid())
-  profileId   String
-  company     String
-  title       String
-  location    String?
-  startDate   DateTime
-  endDate     DateTime?
-  current     Boolean   @default(false)
-  description String?   @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([profileId])
+enum ContentVisibility {
+  PRIVATE
+  TEAM
+  ORGANIZATION
+  PUBLIC
 }
 
-model Certification {
-  id           String    @id @default(cuid())
-  profileId    String
-  name         String
-  issuer       String
-  issueDate    DateTime
-  expiryDate   DateTime?
-  credentialId String?
-  url          String?
+enum ComplexityLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
 
-  // Relations
-  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+enum ContributorRole {
+  AUTHOR
+  EDITOR
+  REVIEWER
+  TRANSLATOR
+}
 
-  @@index([profileId])
+enum CollaboratorRole {
+  ADMIN
+  EDITOR
+  CONTRIBUTOR
+  VIEWER
+}
+
+enum ResourceType {
+  DOCUMENT
+  VIDEO
+  AUDIO
+  IMAGE
+  CODE
+  DATASET
+  TEMPLATE
+  OTHER
+}
+
+enum ContributionType {
+  ARTICLE
+  TUTORIAL
+  CODE
+  PRESENTATION
+  RESEARCH
+  MENTORSHIP
+  COMMUNITY
+  OTHER
+}
+
+enum ProfessionalEventType {
+  CONFERENCE
+  WEBINAR
+  WORKSHOP
+  PANEL
+  KEYNOTE
+  PODCAST
+  INTERVIEW
+}
+
+enum ViewMode {
+  STANDARD
+  COMPACT
+  EXPANDED
+  PRESENTATION
+}
+
+enum AnimationLevel {
+  NONE
+  MINIMAL
+  MODERATE
+  FULL
+}
+
+enum CardStyle {
+  CLASSIC
+  MODERN
+  MINIMAL
+  CREATIVE
+  PROFESSIONAL
+}
+
+enum ExpertiseLevel {
+  NOVICE
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum MentorshipStatus {
+  AVAILABLE
+  BUSY
+  ON_BREAK
+  INACTIVE
+}
+
+enum EventType {
+  CONFERENCE
+  WEBINAR
+  WORKSHOP
+  PANEL
+  KEYNOTE
+  PODCAST
+  INTERVIEW
 }

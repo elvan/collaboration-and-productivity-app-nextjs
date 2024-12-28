@@ -83,14 +83,20 @@ model User {
   bulkActions                 BulkAction[]
   notificationTemplateVersion NotificationTemplateVersion[]
 
-  abTest           ABTest[]
-  abTestEvent      ABTestEvent[]
-  UserSecurity     UserSecurity?
-  UserActivity     UserActivity[]
-  UserDevice       UserDevice[]
-  profile          UserProfile?
-  SkillEndorsement SkillEndorsement[]
-  ExpertiseEndorsement ExpertiseEndorsement[]
+  abTest                ABTest[]
+  abTestEvent           ABTestEvent[]
+  UserSecurity          UserSecurity?
+  UserActivity          UserActivity[]
+  UserDevice            UserDevice[]
+  profile               UserProfile?
+  SkillEndorsement      SkillEndorsement[]
+  ExpertiseEndorsement  ExpertiseEndorsement[]
+  MentorshipTestimonial MentorshipTestimonial[]
+  ArticleContributor    ArticleContributor[]
+  ArticleFeedback       ArticleFeedback[]
+  KnowledgeCollaborator KnowledgeCollaborator[]
+  ArticleRevision       ArticleRevision[]       @relation("RevisionAuthor")
+  ReviewedRevisions     ArticleRevision[]       @relation("RevisionReviewer")
 
   @@index([email])
 }

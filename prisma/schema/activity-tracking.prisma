@@ -51,7 +51,7 @@ enum AnalyticsPeriod {
   MONTHLY
 }
 
-enum EventType {
+enum ActivityEventType {
   SENT
   DELIVERED
   READ
