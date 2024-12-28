@@ -3,8 +3,13 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { hasPermission } from "@/lib/permissions"
 import { prisma } from "@/lib/prisma"
+import { requireAdminAccess } from "@/lib/admin"
 
 export async function GET(request: Request) {
+  // Check admin access
+  const accessError = await requireAdminAccess()
+  if (accessError) return accessError
+
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
@@ -82,6 +87,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Check admin access
+  const accessError = await requireAdminAccess()
+  if (accessError) return accessError
+
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
@@ -128,6 +137,10 @@ export async function POST(request: Request) {
 
 // Bulk actions endpoint
 export async function PATCH(request: Request) {
+  // Check admin access
+  const accessError = await requireAdminAccess()
+  if (accessError) return accessError
+
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {

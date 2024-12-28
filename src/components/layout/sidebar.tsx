@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { useIsHydrated } from '@/hooks/use-is-hydrated';
+import { useAdminAccess } from "@/hooks/use-admin-access"
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -386,6 +387,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 export function Sidebar({ className, ...props }: SidebarProps) {
   const pathname = usePathname();
   const isHydrated = useIsHydrated();
+  const hasAdminAccess = useAdminAccess();
   const [expandedItems, setExpandedItems] = usePersistentState<string[]>(
     'sidebar-expanded',
     []
@@ -562,34 +564,28 @@ export function Sidebar({ className, ...props }: SidebarProps) {
     );
   };
 
+  const filteredNavItems = useMemo(() => {
+    return sidebarNavItems.filter(item => {
+      if (item.title === "Admin") {
+        return hasAdminAccess
+      }
+      return true
+    })
+  }, [hasAdminAccess])
+
   return (
     <nav
       className={cn(
-        'hidden flex-col md:flex md:w-[220px] lg:w-[240px]',
+        "relative h-screen border-r pt-16 flex flex-col bg-background",
         className
       )}
       {...props}
-      role='tree'
-      aria-label='Navigation menu'
     >
-      <div className='flex-1 space-y-4'>
-        <div className='px-3'>
-          <div className='space-y-1'>
-            <div
-              className={cn('mb-2 px-4', !isHydrated && 'flex items-center')}
-            >
-              {!isHydrated ? (
-                <div className='h-6 w-20 animate-pulse rounded bg-muted' />
-              ) : (
-                <h2 className='text-xl font-semibold tracking-tight'>
-                  Overview
-                </h2>
-              )}
-            </div>
-            {sidebarNavItems.map((item, index) =>
-              renderNavItem(item, 0, index)
-            )}
-          </div>
+      <div className="flex-1 py-2">
+        <div className="px-4 py-2">
+          {filteredNavItems.map((item, index) => (
+            renderNavItem(item, 0, index)
+          ))}
         </div>
       </div>
     </nav>

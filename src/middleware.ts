@@ -2,7 +2,7 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 export default withAuth(
-  function middleware(req) {
+  async function middleware(req) {
     const token = req.nextauth.token;
     const isAuth = !!token;
     const isAuthPage =
@@ -25,6 +25,22 @@ export default withAuth(
       return NextResponse.redirect(
         new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
       );
+    }
+
+    // Check admin access for admin routes
+    if (req.nextUrl.pathname.startsWith("/admin")) {
+      try {
+        const response = await fetch(new URL("/api/admin/access", req.url));
+        const { hasAccess } = await response.json();
+        
+        if (!hasAccess) {
+          return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+      } catch (error) {
+        // If there's an error checking access, redirect to dashboard
+        console.error("Error checking admin access:", error);
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
     }
   },
   {
@@ -53,5 +69,6 @@ export const config = {
     "/tasks/:path*",
     "/notifications/:path*",
     "/messages/:path*",
+    "/admin/:path*", // Add admin routes to protected paths
   ],
 };
