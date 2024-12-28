@@ -1,9 +1,81 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, PermissionAction, PermissionResource } from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+async function createDefaultRoles() {
+  // Create Admin Role
+  const adminRole = await prisma.role.create({
+    data: {
+      name: "Admin",
+      description: "Full system access",
+      isSystem: true,
+      permissions: {
+        create: Object.values(PermissionResource).flatMap((resource) =>
+          Object.values(PermissionAction).map((action) => ({
+            action,
+            resource,
+          }))
+        ),
+      },
+    },
+  });
+
+  // Create User Role
+  const userRole = await prisma.role.create({
+    data: {
+      name: "User",
+      description: "Standard user access",
+      isSystem: true,
+      permissions: {
+        create: [
+          { action: "READ", resource: "PROJECTS" },
+          { action: "CREATE", resource: "TASKS" },
+          { action: "READ", resource: "TASKS" },
+          { action: "UPDATE", resource: "TASKS" },
+          { action: "DELETE", resource: "TASKS" },
+        ],
+      },
+    },
+  });
+
+  // Create Guest Role
+  const guestRole = await prisma.role.create({
+    data: {
+      name: "Guest",
+      description: "Limited access",
+      isSystem: true,
+      permissions: {
+        create: [
+          { action: "READ", resource: "PROJECTS" },
+          { action: "READ", resource: "TASKS" },
+        ],
+      },
+    },
+  });
+
+  return { adminRole, userRole, guestRole };
+}
+
 async function main() {
+  // Create default roles first
+  const { adminRole, userRole } = await createDefaultRoles();
+
+  // Create admin user
+  const adminPassword = await hash('admin123', 12);
+  const adminUser = await prisma.user.create({
+    data: {
+      name: 'Admin User',
+      email: 'admin@example.com',
+      password: adminPassword,
+      userRole: {
+        create: {
+          roleId: adminRole.id,
+        },
+      },
+    },
+  });
+
   // Create test user
   const hashedPassword = await hash('password123', 12);
   const user = await prisma.user.create({
@@ -11,6 +83,11 @@ async function main() {
       name: 'Test User',
       email: 'test@example.com',
       password: hashedPassword,
+      userRole: {
+        create: {
+          roleId: userRole.id,
+        },
+      },
     },
   });
 
@@ -23,7 +100,7 @@ async function main() {
       members: {
         create: {
           userId: user.id,
-          role: 'admin',
+          role: 'MEMBER',
         },
       },
     },
@@ -141,7 +218,13 @@ async function main() {
     },
   });
 
-  console.log('Seed data created successfully');
+  console.log('Seed data created successfully!');
+  console.log('Admin user credentials:');
+  console.log('Email: admin@example.com');
+  console.log('Password: admin123');
+  console.log('\nTest user credentials:');
+  console.log('Email: test@example.com');
+  console.log('Password: password123');
 }
 
 main()

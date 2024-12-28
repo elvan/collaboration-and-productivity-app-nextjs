@@ -59,19 +59,21 @@ model User {
   calendarIntegrations CalendarIntegration[]
   emailLogs            EmailLog[]            @relation("ReceivedEmails")
 
+  scheduledNotification       ScheduledNotification[]
+  templateAnalytics           TemplateAnalytics[]
+  campaign                    Campaign[]
+  campaignEvent               CampaignEvent[]
+  userRole                    UserRole[]
+  workspaceRole               WorkspaceRole[]
+  teamRole                    TeamRole[]
+
   // Audit & Analytics
   auditLogs                   AuditLog[]
   bulkActions                 BulkAction[]
-  NotificationTemplateVersion NotificationTemplateVersion[]
-  ABTest                      ABTest[]
-  ABTestEvent                 ABTestEvent[]
-  ScheduledNotification       ScheduledNotification[]
-  TemplateAnalytics           TemplateAnalytics[]
-  Campaign                    Campaign[]
-  CampaignEvent               CampaignEvent[]
-  UserRole                    UserRole[]
-  WorkspaceRole               WorkspaceRole[]
-  TeamRole                    TeamRole[]
+  notificationTemplateVersion NotificationTemplateVersion[]
+
+  abTest                      ABTest[]
+  abTestEvent                 ABTestEvent[]
 
   @@index([email])
 }
