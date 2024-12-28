@@ -31,11 +31,12 @@ model User {
   createdTasks  Task[] @relation("TaskCreator")
 
   // Activity & Comments
-  activities  Activity[]
-  comments    Comment[]
-  mentions    Mention[]
-  attachments Attachment[] @relation("Uploads")
-  timeEntries TimeEntry[]
+  activities   Activity[]
+  comments     Comment[]
+  mentions     Mention[]
+  attachments  Attachment[]   @relation("Uploads")
+  timeEntries  TimeEntry[]
+  timeTracking TimeTracking[] @relation("UserTimeTracking")
 
   // Notifications
   notifications           Notification[]

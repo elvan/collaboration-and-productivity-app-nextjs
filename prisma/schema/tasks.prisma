@@ -36,11 +36,12 @@ model Task {
   dependentOn  TaskDependency[] @relation("DependentTasks")
   dependedOnBy TaskDependency[] @relation("BlockingTasks")
 
-  activities  Activity[]
-  comments    Comment[]
-  timeEntries TimeEntry[]
-  mentions    Mention[]
-  attachments Attachment[]
+  activities   Activity[]
+  comments     Comment[]
+  timeEntries  TimeEntry[]
+  mentions     Mention[]
+  attachments  Attachment[]
+  timeTracking TimeTracking[] @relation("TaskTimeTracking")
 
   notifications Notification[]
   emailLogs     EmailLog[]
