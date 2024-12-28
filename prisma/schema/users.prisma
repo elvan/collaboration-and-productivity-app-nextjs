@@ -1,16 +1,25 @@
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
+  id            String     @id @default(cuid())
+  name          String
+  email         String     @unique
   emailVerified DateTime?
   password      String
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  bio           String?    @db.Text
+  location      String?
+  website       String?
+  status        UserStatus @default(ACTIVE)
+  lastSeen      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  sessions    Session[]
+  preferences UserPreference?
 
   // Auth relations
   accounts Account[]
-  sessions Session[]
 
   // Workspace relations
   workspaces      WorkspaceMember[]
@@ -59,21 +68,23 @@ model User {
   calendarIntegrations CalendarIntegration[]
   emailLogs            EmailLog[]            @relation("ReceivedEmails")
 
-  scheduledNotification       ScheduledNotification[]
-  templateAnalytics           TemplateAnalytics[]
-  campaign                    Campaign[]
-  campaignEvent               CampaignEvent[]
-  userRole                    UserRole[]
-  workspaceRole               WorkspaceRole[]
-  teamRole                    TeamRole[]
+  scheduledNotification ScheduledNotification[]
+  templateAnalytics     TemplateAnalytics[]
+  campaign              Campaign[]
+  campaignEvent         CampaignEvent[]
+
+  // Roles
+  userRoles      UserRole[]
+  workspaceRoles WorkspaceRole[]
+  teamRoles      TeamRole[]
 
   // Audit & Analytics
   auditLogs                   AuditLog[]
   bulkActions                 BulkAction[]
   notificationTemplateVersion NotificationTemplateVersion[]
 
-  abTest                      ABTest[]
-  abTestEvent                 ABTestEvent[]
+  abTest      ABTest[]
+  abTestEvent ABTestEvent[]
 
   @@index([email])
 }
@@ -102,7 +113,12 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -113,6 +129,22 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model UserPreference {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  theme              String   @default("system")
+  emailNotifications Boolean  @default(true)
+  pushNotifications  Boolean  @default(true)
+  taskReminders      Boolean  @default(true)
+  language           String   @default("en")
+  timezone           String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PushSubscription {
@@ -146,6 +178,12 @@ model BulkAction {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
 }
 
 enum MembershipRole {

@@ -1,13 +1,13 @@
 model Project {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
   description String?
   workspaceId String
   teamId      String?
   ownerId     String
-  status      String   @default("active") // active, archived, completed
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      ProjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   // Relations
   workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -95,4 +95,10 @@ model PriorityRule {
 
   @@index([projectId])
   @@index([isActive])
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  COMPLETED
 }
