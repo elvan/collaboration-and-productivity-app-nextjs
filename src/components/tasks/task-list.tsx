@@ -1,4 +1,6 @@
-import { useState } from "react"
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
@@ -31,6 +33,8 @@ import {
 } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
+import { taskService } from "@/lib/task-service"
+import toast from "@/lib/toast"
 
 interface Task {
   id: string
@@ -49,7 +53,6 @@ interface Task {
 }
 
 interface TaskListProps {
-  tasks: Task[]
   projectId: string
   projectMembers: Array<{ id: string; name: string }>
   onDelete: (taskId: string) => Promise<void>
@@ -60,7 +63,6 @@ interface TaskListProps {
 }
 
 export function TaskList({
-  tasks,
   projectId,
   projectMembers,
   onDelete,
@@ -72,6 +74,25 @@ export function TaskList({
   const router = useRouter()
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [tasks, setTasks] = useState<Task[]>([])
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        setIsLoading(true);
+        const fetchedTasks = await taskService.getTasks(projectId);
+        setTasks(fetchedTasks);
+      } catch (error) {
+        console.error("Failed to load tasks:", error);
+        toast.error("Failed to load tasks");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTasks();
+  }, [projectId]);
 
   const statusColors: Record<string, string> = {
     todo: "bg-slate-500",
@@ -89,9 +110,13 @@ export function TaskList({
   async function handleDelete(taskId: string) {
     try {
       await onDelete(taskId)
+      const updatedTasks = tasks.filter(task => task.id !== taskId);
+      setTasks(updatedTasks);
+      toast.success("Task deleted successfully");
       router.refresh()
     } catch (error) {
       console.error("Failed to delete task:", error)
+      toast.error("Failed to delete task");
     }
   }
 
@@ -99,11 +124,17 @@ export function TaskList({
     if (!editingTask) return
 
     try {
-      await onUpdate(editingTask.id, data)
-      setEditingTask(null)
+      const updatedTask = await taskService.updateTask(projectId, editingTask.id, data);
+      const updatedTasks = tasks.map(task =>
+        task.id === editingTask.id ? updatedTask : task
+      );
+      setTasks(updatedTasks);
+      setEditingTask(null);
+      toast.success("Task updated successfully");
       router.refresh()
     } catch (error) {
       console.error("Failed to update task:", error)
+      toast.error("Failed to update task");
     }
   }
 
@@ -342,7 +373,17 @@ export function TaskList({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tasks.map((task) => renderTaskRow(task))}
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={6}>
+                  <div className="flex items-center justify-center p-4">
+                    <span>Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              tasks.map((task) => renderTaskRow(task))
+            )}
           </TableBody>
         </Table>
       </div>
