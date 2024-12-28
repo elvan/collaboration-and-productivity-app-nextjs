@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { sendTeamInvitationEmail } from '@/lib/email/team-invitation';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function POST(
   request: Request,
@@ -27,12 +29,13 @@ export async function POST(
           },
         },
       },
+      include: {
+        workspace: true,
+      },
     });
 
     if (!team) {
-      return new NextResponse('Unauthorized or team not found', {
-        status: 404,
-      });
+      return new NextResponse('Unauthorized or team not found', { status: 404 });
     }
 
     // Check if user exists
@@ -51,10 +54,30 @@ export async function POST(
           status: 'pending',
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
         },
+        include: {
+          team: true,
+          invitedBy: true,
+        },
       });
 
-      // Send invitation email (implement email service integration)
-      // await sendInvitationEmail(invitation);
+      // Send invitation email
+      const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invitation.id}`;
+      await sendTeamInvitationEmail({
+        invitation,
+        inviteUrl,
+      });
+
+      // Log activity
+      await logActivity({
+        type: 'member_invited',
+        userId: session.user.id,
+        teamId: params.teamId,
+        workspaceId: team.workspaceId,
+        metadata: {
+          invitedEmail: email,
+          role,
+        },
+      });
 
       return NextResponse.json(invitation);
     }
@@ -75,6 +98,17 @@ export async function POST(
             image: true,
           },
         },
+      },
+    });
+
+    // Log activity
+    await logActivity({
+      type: 'member_joined',
+      userId: userToInvite.id,
+      teamId: params.teamId,
+      workspaceId: team.workspaceId,
+      metadata: {
+        role,
       },
     });
 
