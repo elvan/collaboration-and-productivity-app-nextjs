@@ -7,6 +7,8 @@ import { hasPermission } from "@/lib/permissions"
 import { prisma } from "@/lib/prisma"
 import { DataTable } from "./data-table"
 import { columns } from "./columns"
+import { Button } from "@/components/ui/button"
+import { UserPlus } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "User Management",
@@ -16,7 +18,7 @@ export const metadata: Metadata = {
 async function getUsers() {
   const users = await prisma.user.findMany({
     include: {
-      userRoles: {
+      userRole: {
         include: {
           role: true,
         },
@@ -48,6 +50,12 @@ export default async function UsersPage() {
           <p className="text-muted-foreground">
             Here you can manage users and their roles
           </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
         </div>
       </div>
       <DataTable data={users} columns={columns} />

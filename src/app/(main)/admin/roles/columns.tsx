@@ -1,14 +1,13 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { User } from "@prisma/client"
+import { Role } from "@prisma/client"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTableColumnHeader } from "./data-table-column-header"
 import { DataTableRowActions } from "./data-table-row-actions"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-export const columns: ColumnDef<User>[] = [
+export const columns: ColumnDef<Role>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -37,47 +36,37 @@ export const columns: ColumnDef<User>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <div className="flex items-center">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={row.original.image || ""} alt={row.getValue("name")} />
-            <AvatarFallback>
-              {row.getValue<string>("name")?.charAt(0).toUpperCase() || "U"}
-            </AvatarFallback>
-          </Avatar>
-          <span className="ml-2 font-medium">{row.getValue("name")}</span>
-        </div>
-      )
-    },
-  },
-  {
-    accessorKey: "email",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
-    ),
-    cell: ({ row }) => {
-      return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("email")}
+            {row.getValue("name")}
           </span>
+          {row.original.isSystem && <Badge>System</Badge>}
         </div>
       )
     },
   },
   {
-    accessorKey: "userRole",
+    accessorKey: "description",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Roles" />
+      <DataTableColumnHeader column={column} title="Description" />
     ),
     cell: ({ row }) => {
-      const roles = row.original.userRole || []
       return (
-        <div className="flex gap-1">
-          {roles.map((userRole) => (
-            <Badge key={userRole.roleId} variant="secondary">
-              {userRole.role.name}
-            </Badge>
-          ))}
+        <div className="max-w-[500px] truncate">
+          {row.getValue("description")}
+        </div>
+      )
+    },
+  },
+  {
+    accessorKey: "_count.userRoles",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Users" />
+    ),
+    cell: ({ row }) => {
+      return (
+        <div className="flex w-[100px] items-center">
+          <Badge variant="secondary">{row.original._count.userRoles}</Badge>
         </div>
       )
     },
