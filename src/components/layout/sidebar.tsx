@@ -394,6 +394,37 @@ export function Sidebar({ className, ...props }: SidebarProps) {
       subItem => pathname === subItem.href || pathname.startsWith(subItem.href + '/')
     )
 
+    const commonClassNames = cn(
+      "w-full flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-ring",
+      (isActive || isParentOfActive) ? "bg-accent" : "transparent",
+      depth > 0 ? "pl-8" : "",
+      !isHydrated && "invisible"
+    )
+
+    const handleItemClick = (e: React.MouseEvent) => {
+      if (hasSubItems) {
+        e.preventDefault()
+        toggleExpanded(item.href)
+      }
+    }
+
+    const content = (
+      <>
+        <div className="flex items-center flex-1">
+          <item.icon className="mr-2 h-4 w-4" />
+          {item.title}
+        </div>
+        {hasSubItems && (
+          <ChevronRight
+            className={cn(
+              "h-4 w-4 transition-transform duration-200",
+              isExpanded ? "transform rotate-90" : ""
+            )}
+          />
+        )}
+      </>
+    )
+
     return (
       <div key={item.href} className="space-y-1">
         <div className={cn(
@@ -406,39 +437,31 @@ export function Sidebar({ className, ...props }: SidebarProps) {
               <div className="ml-2 h-4 w-24 animate-pulse rounded bg-muted" />
             </div>
           )}
-          <button
-            ref={el => itemRefs.current[index] = el}
-            onClick={() => {
-              if (hasSubItems) {
-                toggleExpanded(item.href)
-              } else {
-                window.location.href = item.href
-              }
-            }}
-            onKeyDown={(e) => handleKeyDown(e, index)}
-            className={cn(
-              "w-full flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-ring",
-              (isActive || isParentOfActive) ? "bg-accent" : "transparent",
-              depth > 0 ? "pl-8" : "",
-              !isHydrated && "invisible"
-            )}
-            role="treeitem"
-            aria-expanded={hasSubItems ? isExpanded : undefined}
-            tabIndex={focusedIndex === index ? 0 : -1}
-          >
-            <div className="flex items-center flex-1">
-              <item.icon className="mr-2 h-4 w-4" />
-              {item.title}
-            </div>
-            {hasSubItems && (
-              <ChevronRight
-                className={cn(
-                  "h-4 w-4 transition-transform duration-200",
-                  isExpanded ? "transform rotate-90" : ""
-                )}
-              />
-            )}
-          </button>
+          {hasSubItems ? (
+            <button
+              ref={el => itemRefs.current[index] = el}
+              onClick={handleItemClick}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className={commonClassNames}
+              role="treeitem"
+              aria-expanded={isExpanded}
+              tabIndex={focusedIndex === index ? 0 : -1}
+            >
+              {content}
+            </button>
+          ) : (
+            <Link
+              href={item.href}
+              ref={el => itemRefs.current[index] = el as any}
+              onClick={handleItemClick}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              className={commonClassNames}
+              role="treeitem"
+              tabIndex={focusedIndex === index ? 0 : -1}
+            >
+              {content}
+            </Link>
+          )}
         </div>
         <AnimatePresence initial={false}>
           {hasSubItems && isExpanded && isHydrated && (
