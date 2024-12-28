@@ -19,6 +19,7 @@ async function main() {
     data: {
       name: 'Test Workspace',
       description: 'A workspace for testing',
+      ownerId: user.id,
       members: {
         create: {
           userId: user.id,
@@ -97,53 +98,50 @@ async function main() {
     },
   });
 
+  // Create task list for views
+  const defaultTaskList = await prisma.taskList.create({
+    data: {
+      name: 'All Tasks',
+      description: 'Default view for all tasks',
+      viewType: 'list',
+      projectId: project.id,
+      filters: {},
+      sortOrder: { field: 'createdAt', direction: 'desc' },
+    },
+  });
+
   // Create tasks
   const task1 = await prisma.task.create({
     data: {
       title: 'First Task',
-      description: 'This is the first task',
+      description: 'This is the first test task',
       status: 'todo',
       priority: 'high',
-      dueDate: new Date('2024-01-01'),
       projectId: project.id,
       createdById: user.id,
       assigneeId: user.id,
       statusId: todoStatus.id,
       priorityId: highPriority.id,
+      listId: defaultTaskList.id,
     },
   });
 
   const task2 = await prisma.task.create({
     data: {
       title: 'Second Task',
-      description: 'This is the second task',
+      description: 'This is the second test task',
       status: 'in_progress',
       priority: 'medium',
-      dueDate: new Date('2024-01-15'),
       projectId: project.id,
       createdById: user.id,
       assigneeId: user.id,
       statusId: inProgressStatus.id,
       priorityId: mediumPriority.id,
+      listId: defaultTaskList.id,
     },
   });
 
-  const task3 = await prisma.task.create({
-    data: {
-      title: 'Third Task',
-      description: 'This is the third task',
-      status: 'done',
-      priority: 'low',
-      dueDate: new Date('2024-01-30'),
-      projectId: project.id,
-      createdById: user.id,
-      assigneeId: user.id,
-      statusId: doneStatus.id,
-      priorityId: lowPriority.id,
-    },
-  });
-
-  console.log('Database seeded!');
+  console.log('Seed data created successfully');
 }
 
 main()

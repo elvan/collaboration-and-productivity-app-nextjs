@@ -9,14 +9,9 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="relative flex min-h-screen flex-col">
-      <div className="fixed inset-y-0 z-50 h-[60px] w-full border-b bg-background">
-        <div className="flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Header />
-          </div>
-          <div className="flex items-center gap-4">
-            <NotificationsDropdown />
-          </div>
+      <div>
+        <div className="flex h-16 items-center px-4">
+          <Header />
         </div>
       </div>
       <div className="flex pt-16">

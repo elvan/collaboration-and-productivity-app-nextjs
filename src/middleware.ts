@@ -45,7 +45,13 @@ export const config = {
      * - favicon.ico (favicon file)
      * - login
      * - register
+     * - / (home page)
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|login|register).*)",
+    "/dashboard/:path*",
+    "/settings/:path*",
+    "/projects/:path*",
+    "/tasks/:path*",
+    "/notifications/:path*",
+    "/messages/:path*",
   ],
 };
