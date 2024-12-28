@@ -10,75 +10,121 @@ const routeContextSchema = z.object({
   }),
 })
 
-const taskSchema = z.object({
+const taskCreateSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
-  priority: z.enum(["low", "medium", "high"]),
-  assignedToId: z.string().optional(),
-  dueDate: z.string().datetime(),
+  status: z.string(),
+  priority: z.string(),
+  dueDate: z.string().optional(),
+  assigneeId: z.string().optional(),
+  customFields: z.record(z.any()).optional(),
+  relationships: z.array(z.object({
+    id: z.string(),
+    type: z.string(),
+    targetId: z.string(),
+  })).optional(),
 })
 
 export async function POST(
   req: Request,
-  context: z.infer<typeof routeContextSchema>
+  { params }: { params: { projectId: string } }
 ) {
   try {
-    const { params } = routeContextSchema.parse(context)
-
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 403 })
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    const projectId = params.projectId;
 
     // Check if user is a member of the project
-    const project = await prisma.project.findFirst({
+    const projectMember = await prisma.projectMember.findFirst({
       where: {
-        id: params.projectId,
-        OR: [
-          { ownerId: session.user.id },
-          { members: { some: { id: session.user.id } } },
-        ],
+        projectId: projectId,
+        userId: session.user.id,
       },
-    })
+    });
 
-    if (!project) {
-      return new NextResponse("Project not found", { status: 404 })
+    if (!projectMember) {
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const json = await req.json()
-    const body = taskSchema.parse(json)
+    const json = await req.json();
+    const body = taskCreateSchema.parse(json);
 
-    const task = await prisma.task.create({
-      data: {
-        title: body.title,
-        description: body.description,
-        priority: body.priority,
-        status: "in_progress",
-        dueDate: new Date(body.dueDate),
-        project: { connect: { id: params.projectId } },
-        assignedTo: body.assignedToId
-          ? { connect: { id: body.assignedToId } }
-          : undefined,
-        createdBy: { connect: { id: session.user.id } },
-      },
-      include: {
-        assignedTo: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
+    // Create task with activity log and relationships
+    const task = await prisma.$transaction(async (tx) => {
+      // Create the task
+      const task = await tx.task.create({
+        data: {
+          title: body.title,
+          description: body.description,
+          status: body.status,
+          priority: body.priority,
+          dueDate: body.dueDate ? new Date(body.dueDate) : null,
+          assigneeId: body.assigneeId,
+          projectId: projectId,
+          createdById: session.user.id,
+          customFields: body.customFields || {},
+        },
+      });
+
+      // Create relationships if provided
+      if (body.relationships?.length) {
+        await Promise.all(
+          body.relationships.map((rel) =>
+            tx.taskRelationship.create({
+              data: {
+                taskId: task.id,
+                type: rel.type,
+                targetTaskId: rel.targetId,
+              },
+            })
+          )
+        );
+      }
+
+      // Create activity log
+      await tx.activity.create({
+        data: {
+          type: "task_created",
+          projectId: projectId,
+          taskId: task.id,
+          userId: session.user.id,
+          metadata: {
+            taskTitle: task.title,
+            assigneeId: body.assigneeId,
+            customFields: body.customFields,
+            relationships: body.relationships,
           },
         },
-      },
-    })
+      });
 
-    return NextResponse.json(task)
+      // Create notification for assignee if assigned
+      if (body.assigneeId && body.assigneeId !== session.user.id) {
+        await tx.notification.create({
+          data: {
+            type: "task_assigned",
+            category: "task",
+            title: "New Task Assignment",
+            message: `You have been assigned to task: ${task.title}`,
+            userId: body.assigneeId,
+            projectId: projectId,
+            taskId: task.id,
+            metadata: {
+              assignedBy: session.user.id,
+              taskTitle: task.title,
+            },
+          },
+        });
+      }
+
+      return task;
+    });
+
+    return NextResponse.json(task);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return new NextResponse(JSON.stringify(error.issues), { status: 422 })
-    }
-
-    return new NextResponse(null, { status: 500 })
+    console.error("[TASKS_POST]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }

@@ -74,6 +74,9 @@ import { TaskRelationships } from "./task-relationships"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ActivityLog } from "@/components/activity-log"
+import { taskService } from "@/services/task-service";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -160,6 +163,7 @@ export function TaskDialog({
   const [relationships, setRelationships] = useState([])
   const [customFields, setCustomFields] = useState<CustomField[]>([])
   const [customFieldValues, setCustomFieldValues] = useState<any>({})
+  const router = useRouter();
 
   useEffect(() => {
     if (open && projectId) {
@@ -222,15 +226,29 @@ export function TaskDialog({
     },
   })
 
-  const onSubmit = async (data: z.infer<typeof taskSchema>) => {
+  async function onSubmit(data: z.infer<typeof taskSchema>) {
     try {
-      setIsLoading(true)
-      await onUpdate(task.id, data)
-      onOpenChange(false)
+      setIsLoading(true);
+      if (task) {
+        await onUpdate(task.id, {
+          ...data,
+          customFields: customFieldValues,
+          relationships,
+        });
+      } else {
+        await taskService.createTask(projectId, {
+          ...data,
+          dueDate: data.dueDate ? data.dueDate.toISOString() : undefined,
+        });
+        toast.success("Task created successfully");
+      }
+      onOpenChange(false);
+      router.refresh();
     } catch (error) {
-      console.error("Failed to update task:", error)
+      console.error("Failed to update task:", error);
+      toast.error("Failed to update task");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
