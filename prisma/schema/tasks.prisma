@@ -37,7 +37,7 @@ model Task {
   dependedOnBy TaskDependency[] @relation("BlockingTasks")
 
   activities   Activity[]
-  comments     Comment[]
+  comments     TaskComment[]
   timeEntries  TimeEntry[]
   mentions     Mention[]
   attachments  Attachment[]

@@ -1,4 +1,4 @@
-model Comment {
+model TaskComment {
   id        String   @id @default(cuid())
   content   String
   taskId    String
@@ -7,10 +7,10 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  task      Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  replyTo   Comment?   @relation("CommentReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies   Comment[]  @relation("CommentReplies")
+  task      Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo   TaskComment?  @relation("CommentReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   TaskComment[] @relation("CommentReplies")
   mentions  Mention[]
   emailLogs EmailLog[]
 
@@ -27,9 +27,9 @@ model Mention {
   commentId String?
   createdAt DateTime @default(now())
 
-  task    Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user    User     @relation(fields: [userId], references: [id])
+  task    Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment TaskComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id])
 
   @@index([taskId])
   @@index([userId])

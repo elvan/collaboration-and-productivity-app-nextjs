@@ -13,7 +13,7 @@ model EmailLog {
   user                   User                  @relation("ReceivedEmails", fields: [userId], references: [id])
   template               EmailTemplate?        @relation(fields: [templateId], references: [id])
   task                   Task?                 @relation(fields: [taskId], references: [id])
-  comment                Comment?              @relation(fields: [commentId], references: [id])
+  comment                TaskComment?          @relation(fields: [commentId], references: [id])
   taskId                 String?
   commentId              String?
   NotificationTemplate   NotificationTemplate? @relation(fields: [notificationTemplateId], references: [id])

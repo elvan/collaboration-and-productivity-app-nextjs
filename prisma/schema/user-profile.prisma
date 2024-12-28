@@ -97,11 +97,13 @@ model Skill {
 }
 
 model SkillEndorsement {
-  id         String   @id @default(cuid())
-  skillId    String
-  endorserId String
-  note       String?
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  skillId     String
+  endorserId  String
+  weight      Int      @default(1) // 1-5 endorsement weight
+  comment     String?
+  credentials Json? // Endorser's relevant credentials
+  createdAt   DateTime @default(now())
 
   skill    Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
   endorser User  @relation(fields: [endorserId], references: [id], onDelete: Cascade)
@@ -466,24 +468,37 @@ model KnowledgeBase {
 }
 
 model KnowledgeArticle {
-  id              String               @id @default(cuid())
-  knowledgeBaseId String
-  title           String
-  content         String               @db.Text
-  status          ArticleStatus        @default(DRAFT)
-  visibility      ContentVisibility    @default(PUBLIC)
-  tags            String[]
-  category        String?
-  version         Int                  @default(1)
-  revisions       ArticleRevision[]
-  contributors    ArticleContributor[]
-  references      String[] // Citations and references
-  readingTime     Int? // Estimated reading time in minutes
-  complexity      ComplexityLevel      @default(INTERMEDIATE)
-  prerequisites   String[]
-  feedback        ArticleFeedback[]
-  views           Int                  @default(0)
-  shares          Int                  @default(0)
+  id                    String                 @id @default(cuid())
+  knowledgeBaseId       String
+  title                 String
+  content               String                 @db.Text
+  status                ArticleStatus          @default(DRAFT)
+  visibility            ContentVisibility      @default(PUBLIC)
+  tags                  String[]
+  category              String?
+  version               Int                    @default(1)
+  revisions             ArticleRevision[]
+  contributors          ArticleContributor[]
+  references            String[] // Citations and references
+  readingTime           Int? // Estimated reading time in minutes
+  complexity            ComplexityLevel        @default(INTERMEDIATE)
+  prerequisites         String[]
+  feedback              ArticleFeedback[]
+  views                 Int                    @default(0)
+  shares                Int                    @default(0)
+  collaborativeSessions CollaborativeSession[]
+  qualityMetrics        QualityMetrics?
+  contentBlocks         ContentBlock[]
+  taxonomyTags          TaxonomyTag[]
+  relatedArticles       KnowledgeArticle[]     @relation("RelatedArticles")
+  parentArticles        KnowledgeArticle[]     @relation("RelatedArticles")
+  engagementMetrics     EngagementMetrics?
+  comments              ArticleComment[]
+  annotations           Annotation[]
+  reviewCycles          ReviewCycle[]
+  aiAnalysis            AIAnalysis?
+  learningPathways      LearningPathway[]      @relation("PathwayArticles")
+  pathwayPrerequisites  LearningPathway[]      @relation("PathwayPrerequisites")
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -638,6 +653,314 @@ model KnowledgeStats {
   updatedAt DateTime @updatedAt
 
   knowledgeBase KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+}
+
+model CollaborativeSession {
+  id           String                     @id @default(cuid())
+  articleId    String
+  status       SessionStatus              @default(ACTIVE)
+  participants CollaborationParticipant[]
+  operations   CollaborationOperation[]
+  cursors      CursorPosition[]
+  startTime    DateTime                   @default(now())
+  endTime      DateTime?
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+}
+
+model CollaborationParticipant {
+  id        String          @id @default(cuid())
+  sessionId String
+  userId    String
+  joinedAt  DateTime        @default(now())
+  leftAt    DateTime?
+  role      ParticipantRole @default(EDITOR)
+
+  session    CollaborativeSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user       User                     @relation(fields: [userId], references: [id])
+  cursors    CursorPosition[]
+  operations CollaborationOperation[]
+
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model CollaborationOperation {
+  id            String        @id @default(cuid())
+  sessionId     String
+  participantId String
+  type          OperationType
+  position      Int
+  content       String?
+  metadata      Json?
+  timestamp     DateTime      @default(now())
+
+  session     CollaborativeSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant CollaborationParticipant @relation(fields: [participantId], references: [id])
+
+  @@index([sessionId])
+  @@index([participantId])
+}
+
+model CursorPosition {
+  id            String   @id @default(cuid())
+  sessionId     String
+  participantId String
+  position      Int
+  selection     Json? // Selection range if any
+  timestamp     DateTime @default(now())
+
+  session     CollaborativeSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant CollaborationParticipant @relation(fields: [participantId], references: [id])
+
+  @@index([sessionId])
+  @@index([participantId])
+}
+
+model ContentBlock {
+  id        String    @id @default(cuid())
+  articleId String
+  type      BlockType
+  content   String    @db.Text
+  metadata  Json?
+  order     Int
+  version   Int       @default(1)
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+}
+
+model TaxonomyTag {
+  id          String             @id @default(cuid())
+  name        String
+  category    String
+  description String?            @db.Text
+  parent      String? // Parent tag ID
+  metadata    Json?
+  articles    KnowledgeArticle[]
+
+  @@unique([category, name])
+}
+
+model QualityMetrics {
+  id            String        @id @default(cuid())
+  articleId     String        @unique
+  readability   Float? // Readability score
+  completeness  Float? // Content completeness score
+  accuracy      Float? // Accuracy score
+  citations     Int           @default(0)
+  expertReviews Int           @default(0)
+  flags         QualityFlag[]
+  lastAudit     DateTime?
+  improvements  Json? // Suggested improvements
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+model QualityFlag {
+  id          String       @id @default(cuid())
+  metricsId   String
+  type        FlagType
+  description String
+  severity    FlagSeverity @default(MEDIUM)
+  status      FlagStatus   @default(OPEN)
+  createdAt   DateTime     @default(now())
+  resolvedAt  DateTime?
+
+  metrics QualityMetrics @relation(fields: [metricsId], references: [id], onDelete: Cascade)
+
+  @@index([metricsId])
+}
+
+model EngagementMetrics {
+  id           String @id @default(cuid())
+  articleId    String @unique
+  viewDuration Json // Time spent viewing sections
+  scrollDepth  Json // Scroll depth heatmap
+  interactions Json // Click and interaction data
+  shareContext Json? // Context of shares
+  referrers    Json? // Traffic sources
+  deviceTypes  Json? // Device type breakdown
+  bookmarks    Int    @default(0)
+  prints       Int    @default(0)
+  downloads    Int    @default(0)
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+model ArticleComment {
+  id         String                   @id @default(cuid())
+  articleId  String
+  userId     String
+  content    String                   @db.Text
+  parentId   String? // For threaded comments
+  status     CommentStatus            @default(ACTIVE)
+  reactions  ArticleCommentReaction[]
+  mentions   String[] // Mentioned user IDs
+  resolved   Boolean                  @default(false)
+  resolvedBy String?
+  resolvedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id])
+  parent  ArticleComment?  @relation("CommentThread", fields: [parentId], references: [id])
+  replies ArticleComment[] @relation("CommentThread")
+
+  @@index([articleId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model ArticleCommentReaction {
+  id        String       @id @default(cuid())
+  commentId String
+  userId    String
+  type      ReactionType
+  createdAt DateTime     @default(now())
+
+  comment ArticleComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id])
+
+  @@unique([commentId, userId, type])
+  @@index([commentId])
+  @@index([userId])
+}
+
+model Annotation {
+  id         String               @id @default(cuid())
+  articleId  String
+  userId     String
+  content    String               @db.Text
+  selection  Json // Selected text range
+  type       AnnotationType       @default(NOTE)
+  visibility AnnotationVisibility @default(PRIVATE)
+  status     AnnotationStatus     @default(ACTIVE)
+  tags       String[]
+  reactions  AnnotationReaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id])
+
+  @@index([articleId])
+  @@index([userId])
+}
+
+model AnnotationReaction {
+  id           String       @id @default(cuid())
+  annotationId String
+  userId       String
+  type         ReactionType
+  createdAt    DateTime     @default(now())
+
+  annotation Annotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([annotationId, userId, type])
+  @@index([annotationId])
+  @@index([userId])
+}
+
+model ReviewCycle {
+  id         String            @id @default(cuid())
+  articleId  String
+  status     ReviewStatus      @default(IN_PROGRESS)
+  reviewers  String[] // User IDs
+  deadline   DateTime?
+  feedback   Json? // Structured feedback
+  resolution ReviewResolution?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+}
+
+model AIAnalysis {
+  id          String   @id @default(cuid())
+  articleId   String   @unique
+  readability Json? // Detailed readability metrics
+  sentiment   Json? // Content sentiment analysis
+  topics      Json? // Auto-detected topics
+  keywords    String[] // Key terms and phrases
+  summary     String?  @db.Text
+  suggestions Json? // AI-generated improvements
+
+  lastAnalysis DateTime @default(now())
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+model LearningPathway {
+  id            String             @id @default(cuid())
+  title         String
+  description   String             @db.Text
+  difficulty    DifficultyLevel    @default(INTERMEDIATE)
+  duration      Int? // Estimated hours to complete
+  articles      KnowledgeArticle[] @relation("PathwayArticles")
+  prerequisites KnowledgeArticle[] @relation("PathwayPrerequisites")
+  order         Json // Article sequence and dependencies
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum CommentStatus {
+  ACTIVE
+  HIDDEN
+  DELETED
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  LAUGH
+  INSIGHTFUL
+  CONFUSED
+}
+
+enum AnnotationType {
+  NOTE
+  QUESTION
+  SUGGESTION
+  CORRECTION
+  REFERENCE
+}
+
+enum AnnotationVisibility {
+  PRIVATE
+  TEAM
+  PUBLIC
+}
+
+enum AnnotationStatus {
+  ACTIVE
+  RESOLVED
+  HIDDEN
+}
+
+enum ReviewResolution {
+  APPROVED
+  REJECTED
+  NEEDS_CHANGES
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
 }
 
 model Contribution {
@@ -818,6 +1141,7 @@ enum ComplexityLevel {
 
 enum ReviewStatus {
   PENDING
+  IN_PROGRESS
   APPROVED
   REJECTED
   CHANGES_REQUESTED
@@ -913,4 +1237,57 @@ enum EventType {
   KEYNOTE
   PODCAST
   INTERVIEW
+}
+
+enum SessionStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum ParticipantRole {
+  VIEWER
+  EDITOR
+  MODERATOR
+}
+
+enum OperationType {
+  INSERT
+  DELETE
+  REPLACE
+  FORMAT
+  COMMENT
+}
+
+enum BlockType {
+  TEXT
+  CODE
+  IMAGE
+  VIDEO
+  TABLE
+  QUOTE
+  EMBED
+}
+
+enum FlagType {
+  ACCURACY
+  CLARITY
+  OUTDATED
+  INCOMPLETE
+  STYLE
+  CITATION_NEEDED
+}
+
+enum FlagSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FlagStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  WONTFIX
 }

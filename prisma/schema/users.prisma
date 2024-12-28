@@ -41,7 +41,6 @@ model User {
 
   // Activity & Comments
   activities   Activity[]
-  comments     Comment[]
   mentions     Mention[]
   attachments  Attachment[]   @relation("Uploads")
   timeEntries  TimeEntry[]
@@ -83,20 +82,26 @@ model User {
   bulkActions                 BulkAction[]
   notificationTemplateVersion NotificationTemplateVersion[]
 
-  abTest                ABTest[]
-  abTestEvent           ABTestEvent[]
-  UserSecurity          UserSecurity?
-  UserActivity          UserActivity[]
-  UserDevice            UserDevice[]
-  profile               UserProfile?
-  SkillEndorsement      SkillEndorsement[]
-  ExpertiseEndorsement  ExpertiseEndorsement[]
-  MentorshipTestimonial MentorshipTestimonial[]
-  ArticleContributor    ArticleContributor[]
-  ArticleFeedback       ArticleFeedback[]
-  KnowledgeCollaborator KnowledgeCollaborator[]
-  ArticleRevision       ArticleRevision[]       @relation("RevisionAuthor")
-  ReviewedRevisions     ArticleRevision[]       @relation("RevisionReviewer")
+  abTest                   ABTest[]
+  abTestEvent              ABTestEvent[]
+  UserSecurity             UserSecurity?
+  UserActivity             UserActivity[]
+  UserDevice               UserDevice[]
+  profile                  UserProfile?
+  SkillEndorsement         SkillEndorsement[]
+  ExpertiseEndorsement     ExpertiseEndorsement[]
+  MentorshipTestimonial    MentorshipTestimonial[]
+  ArticleContributor       ArticleContributor[]
+  ArticleFeedback          ArticleFeedback[]
+  KnowledgeCollaborator    KnowledgeCollaborator[]
+  ArticleRevision          ArticleRevision[]          @relation("RevisionAuthor")
+  ReviewedRevisions        ArticleRevision[]          @relation("RevisionReviewer")
+  CollaborationParticipant CollaborationParticipant[]
+  ArticleComment           ArticleComment[]
+  ArticleCommentReaction   ArticleCommentReaction[]
+  Annotation               Annotation[]
+  AnnotationReaction       AnnotationReaction[]
+  TaskComment              TaskComment[]
 
   @@index([email])
 }
