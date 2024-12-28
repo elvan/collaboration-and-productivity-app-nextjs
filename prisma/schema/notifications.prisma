@@ -31,14 +31,14 @@ model Notification {
 }
 
 model NotificationDelivery {
-  id             String   @id @default(cuid())
+  id             String              @id @default(cuid())
   notificationId String
-  channel        String // app, email, push
-  status         String // sent, delivered, failed
+  channel        NotificationChannel // app, email, push
+  status         DeliveryStatus // sent, delivered, failed
   error          String?
   metadata       Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
@@ -437,6 +437,26 @@ model ABTestEvent {
   @@index([createdAt])
 }
 
+// Notification Enums
+enum NotificationChannel {
+  APP
+  EMAIL
+  PUSH
+}
+
+enum DeliveryStatus {
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
 enum NotificationType {
   TASK_UPDATE
   MENTION
@@ -451,25 +471,6 @@ enum NotificationCategory {
   TASK
   MEMBER
   SYSTEM
-}
-
-enum NotificationPriority {
-  HIGH
-  NORMAL
-  LOW
-}
-
-enum NotificationChannel {
-  APP
-  EMAIL
-  PUSH
-}
-
-enum NotificationStatus {
-  PENDING
-  SENT
-  DELIVERED
-  FAILED
 }
 
 enum NotificationFrequency {

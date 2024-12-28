@@ -1,0 +1,82 @@
+// Authentication and Security Models
+model UserSecurity {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  passwordHash         String
+  passwordSalt         String
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+  twoFactorEnabled     Boolean   @default(false)
+  twoFactorSecret      String?
+  twoFactorBackupCodes String[]
+  lastPasswordChange   DateTime  @default(now())
+  failedLoginAttempts  Int       @default(0)
+  lockedUntil          DateTime?
+  securityQuestions    Json? // Array of {question, answerHash}
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions     Session[]
+  securityLogs SecurityLog[]
+
+  @@index([userId])
+  @@index([passwordResetToken])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  securityId   String
+  token        String   @unique
+  userAgent    String?
+  ipAddress    String?
+  lastActive   DateTime @default(now())
+  expiresAt    DateTime
+  isRevoked    Boolean  @default(false)
+  sessionToken String   @unique
+  expires      DateTime
+  accessToken  String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  security UserSecurity @relation(fields: [securityId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([securityId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model SecurityLog {
+  id         String        @id @default(cuid())
+  securityId String
+  event      SecurityEvent
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime      @default(now())
+
+  // Relations
+  security UserSecurity @relation(fields: [securityId], references: [id], onDelete: Cascade)
+
+  @@index([securityId])
+  @@index([event])
+  @@index([createdAt])
+}
+
+enum SecurityEvent {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  PASSWORD_CHANGE
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_SUCCESS
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  SESSION_REVOKED
+}

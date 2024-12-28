@@ -1,0 +1,88 @@
+// User Preferences and Settings
+model UserPreference {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // UI Preferences
+  theme         String  @default("system") // light, dark, system
+  accentColor   String  @default("blue")
+  fontSize      String  @default("medium")
+  reducedMotion Boolean @default(false)
+  highContrast  Boolean @default(false)
+
+  // Localization
+  language       String @default("en")
+  timezone       String @default("UTC")
+  dateFormat     String @default("MM/DD/YYYY")
+  timeFormat     String @default("12h") // 12h or 24h
+  firstDayOfWeek Int    @default(0) // 0 = Sunday, 1 = Monday
+
+  // Notification Settings
+  notificationSound Boolean @default(true)
+
+  // Task Display
+  defaultTaskView    String  @default("list") // list, board, calendar
+  taskSortOrder      String  @default("dueDate")
+  showCompletedTasks Boolean @default(true)
+
+  // Dashboard
+  dashboardLayout  Json? // Saved dashboard widget layout
+  favoriteProjects String[] // Array of project IDs
+  recentlyViewed   Json? // Recently viewed items
+
+  // Performance
+  pageSize         Int @default(20)
+  autoSaveInterval Int @default(30) // seconds
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// User Activity and Session Tracking
+model UserActivity {
+  id           String   @id @default(cuid())
+  userId       String
+  activityType String
+  resourceType String?
+  resourceId   String?
+  metadata     Json?
+  ipAddress    String?
+  userAgent    String?
+  duration     Int? // Duration in seconds
+  createdAt    DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([activityType])
+  @@index([createdAt])
+}
+
+// User Device Management
+model UserDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  deviceId   String   @unique
+  deviceType String // mobile, tablet, desktop
+  name       String?
+  model      String?
+  platform   String?
+  lastActive DateTime @default(now())
+  pushToken  String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([deviceId])
+  @@index([lastActive])
+}
