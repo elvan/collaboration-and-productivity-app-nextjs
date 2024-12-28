@@ -436,3 +436,49 @@ model ABTestEvent {
   @@index([event])
   @@index([createdAt])
 }
+
+enum NotificationType {
+  TASK_UPDATE
+  MENTION
+  COMMENT
+  ASSIGNMENT
+  DUE_DATE
+  SYSTEM
+}
+
+enum NotificationCategory {
+  PROJECT
+  TASK
+  MEMBER
+  SYSTEM
+}
+
+enum NotificationPriority {
+  HIGH
+  NORMAL
+  LOW
+}
+
+enum NotificationChannel {
+  APP
+  EMAIL
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum NotificationFrequency {
+  IMMEDIATE
+  DAILY
+  WEEKLY
+}
+
+enum NotificationSortOrder {
+  ASC
+  DESC
+}

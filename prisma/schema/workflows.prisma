@@ -36,3 +36,40 @@ model WorkflowAutomation {
   @@index([workflowId])
   @@index([isActive])
 }
+
+enum WorkflowTriggerType {
+  ON_STATUS_CHANGE
+  ON_PRIORITY_CHANGE
+  ON_ASSIGNMENT
+  ON_DUE_DATE
+  ON_COMMENT
+  ON_ATTACHMENT
+}
+
+enum WorkflowActionType {
+  UPDATE_STATUS
+  UPDATE_PRIORITY
+  ASSIGN_USER
+  SEND_NOTIFICATION
+  CREATE_TASK
+  ADD_COMMENT
+}
+
+enum BulkActionType {
+  MARK_AS_READ
+  MARK_AS_UNREAD
+  DISMISS
+  DELETE
+}
+
+enum BulkActionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum WebhookStatus {
+  SUCCESS
+  FAILED
+}

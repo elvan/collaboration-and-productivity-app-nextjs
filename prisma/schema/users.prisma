@@ -141,3 +141,27 @@ model BulkAction {
   @@index([status])
   @@index([createdAt])
 }
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MembershipRole {
+  ADMIN
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  GITHUB
+  MICROSOFT
+}

@@ -272,3 +272,38 @@ model Label {
 
   @@index([projectId])
 }
+
+enum TaskStatuEnum {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELED
+}
+
+enum TaskPriorityLevel {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+  TRIVIAL
+}
+
+enum TaskDependencyType {
+  BLOCKS
+  BLOCKED_BY
+  RELATES_TO
+}
+
+enum TaskFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+enum TaskViewType {
+  LIST
+  BOARD
+  CALENDAR
+  GANTT
+}

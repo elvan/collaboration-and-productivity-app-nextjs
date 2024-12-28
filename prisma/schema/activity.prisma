@@ -18,3 +18,39 @@ model Activity {
   @@index([type])
   @@index([createdAt])
 }
+
+enum AnalyticsType {
+  TASK
+  PROJECT
+  USER
+}
+
+enum AnalyticsMetric {
+  COMPLETION_RATE
+  TIME_SPENT
+  ACTIVITY_COUNT
+  RESPONSE_TIME
+}
+
+enum AnalyticsPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum EventType {
+  SENT
+  DELIVERED
+  READ
+  CLICKED
+  CONVERTED
+  BOUNCED
+  OPTED_OUT
+}
+
+enum ABTestStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  STOPPED
+}
