@@ -60,31 +60,52 @@ export function Header() {
                   Dashboard
                 </Link>
                 <Link
-                  href='/dashboard/tasks'
+                  href='/dashboard/tasks/list'
                   className='transition-colors hover:text-foreground/80'
                 >
                   Tasks
                 </Link>
                 <Link
-                  href='/dashboard/projects'
+                  href='/dashboard/projects/all'
                   className='transition-colors hover:text-foreground/80'
                 >
                   Projects
                 </Link>
                 <Link
-                  href='/dashboard/calendar'
+                  href='/dashboard/calendar/schedule'
                   className='transition-colors hover:text-foreground/80'
                 >
                   Calendar
                 </Link>
                 <Link
-                  href='/dashboard/documents'
+                  href='/dashboard/documents/all'
                   className='transition-colors hover:text-foreground/80'
                 >
                   Documents
                 </Link>
+                <Link
+                  href='/dashboard/messages/chat'
+                  className='transition-colors hover:text-foreground/80'
+                >
+                  Messages
+                </Link>
               </>
-            ) : null}
+            ) : (
+              <>
+                <Link
+                  href='/login'
+                  className='transition-colors hover:text-foreground/80'
+                >
+                  Login
+                </Link>
+                <Link
+                  href='/register'
+                  className='transition-colors hover:text-foreground/80'
+                >
+                  Register
+                </Link>
+              </>
+            )}
           </nav>
         </div>
         <div className='flex items-center space-x-4'>

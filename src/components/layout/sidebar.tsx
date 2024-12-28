@@ -1,12 +1,12 @@
-"use client"
+'use client';
 
-import { useState, useRef, useEffect } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { usePersistentState } from "@/hooks/use-persistent-state"
-import { useIsHydrated } from "@/hooks/use-is-hydrated"
-import { AnimatePresence, motion } from "framer-motion"
+import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { usePersistentState } from '@/hooks/use-persistent-state';
+import { useIsHydrated } from '@/hooks/use-is-hydrated';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   LayoutDashboard,
   Settings,
@@ -33,301 +33,353 @@ import {
   Plug,
   Terminal,
   ChevronRight,
-} from "lucide-react"
+} from 'lucide-react';
 
 interface SidebarNavItem {
-  title: string
-  href: string
-  icon: any
-  items?: SidebarNavItem[]
+  title: string;
+  href: string;
+  icon: any;
+  items?: SidebarNavItem[];
 }
 
 const sidebarNavItems: SidebarNavItem[] = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
+    title: 'Dashboard',
+    href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
-    title: "Tasks",
-    href: "/dashboard/tasks/list",
+    title: 'Tasks',
+    href: '/dashboard/tasks/list',
     icon: ListTodo,
     items: [
       {
-        title: "List View",
-        href: "/dashboard/tasks/list",
+        title: 'List View',
+        href: '/dashboard/tasks/list',
         icon: Layout,
       },
       {
-        title: "Board View",
-        href: "/dashboard/tasks/board",
+        title: 'Board View',
+        href: '/dashboard/tasks/board',
         icon: Layout,
       },
       {
-        title: "Calendar View",
-        href: "/dashboard/tasks/calendar",
+        title: 'Calendar View',
+        href: '/dashboard/tasks/calendar',
         icon: Calendar,
       },
       {
-        title: "Gantt View",
-        href: "/dashboard/tasks/gantt",
+        title: 'Gantt View',
+        href: '/dashboard/tasks/gantt',
         icon: Layout,
       },
       {
-        title: "Templates",
-        href: "/dashboard/tasks/templates",
+        title: 'Templates',
+        href: '/dashboard/tasks/templates',
         icon: Layout,
       },
       {
-        title: "Time Tracking",
-        href: "/dashboard/tasks/time",
+        title: 'Time Tracking',
+        href: '/dashboard/tasks/time',
         icon: Clock,
+      },
+      {
+        title: 'Views',
+        href: '/dashboard/tasks/views',
+        icon: Layout,
+        items: [
+          {
+            title: 'Settings',
+            href: '/dashboard/tasks/views/settings',
+            icon: Settings,
+          },
+        ],
       },
     ],
   },
   {
-    title: "Projects",
-    href: "/dashboard/projects/all",
+    title: 'Projects',
+    href: '/dashboard/projects/all',
     icon: FolderKanban,
     items: [
       {
-        title: "All Projects",
-        href: "/dashboard/projects/all",
+        title: 'All Projects',
+        href: '/dashboard/projects/all',
         icon: Layout,
       },
       {
-        title: "Portfolio",
-        href: "/dashboard/projects/portfolio",
+        title: 'Portfolio',
+        href: '/dashboard/projects/portfolio',
         icon: Briefcase,
       },
       {
-        title: "Templates",
-        href: "/dashboard/projects/templates",
+        title: 'Templates',
+        href: '/dashboard/projects/templates',
         icon: Layout,
       },
       {
-        title: "Reports",
-        href: "/dashboard/projects/reports",
+        title: 'Reports',
+        href: '/dashboard/projects/reports',
         icon: FileText,
       },
     ],
   },
   {
-    title: "Calendar",
-    href: "/dashboard/calendar/schedule",
+    title: 'Calendar',
+    href: '/dashboard/calendar/schedule',
     icon: Calendar,
     items: [
       {
-        title: "Schedule",
-        href: "/dashboard/calendar/schedule",
+        title: 'Schedule',
+        href: '/dashboard/calendar/schedule',
         icon: Calendar,
       },
       {
-        title: "Meetings",
-        href: "/dashboard/calendar/meetings",
+        title: 'Meetings',
+        href: '/dashboard/calendar/meetings',
         icon: Video,
       },
       {
-        title: "Resources",
-        href: "/dashboard/calendar/resources",
+        title: 'Resources',
+        href: '/dashboard/calendar/resources',
         icon: Users,
       },
     ],
   },
   {
-    title: "Documents",
-    href: "/dashboard/documents/all",
+    title: 'Documents',
+    href: '/dashboard/documents/all',
     icon: FileText,
     items: [
       {
-        title: "All Documents",
-        href: "/dashboard/documents/all",
+        title: 'All Documents',
+        href: '/dashboard/documents/all',
         icon: Files,
       },
       {
-        title: "Templates",
-        href: "/dashboard/documents/templates",
+        title: 'Templates',
+        href: '/dashboard/documents/templates',
         icon: Layout,
       },
       {
-        title: "Wiki",
-        href: "/dashboard/documents/wiki",
+        title: 'Wiki',
+        href: '/dashboard/documents/wiki',
         icon: Book,
       },
     ],
   },
   {
-    title: "Messages",
-    href: "/dashboard/messages/chat",
+    title: 'Messages',
+    href: '/dashboard/messages/chat',
     icon: MessageSquare,
     items: [
       {
-        title: "Chat",
-        href: "/dashboard/messages/chat",
+        title: 'Chat',
+        href: '/dashboard/messages/chat',
         icon: MessageCircle,
       },
       {
-        title: "Channels",
-        href: "/dashboard/messages/channels",
+        title: 'Channels',
+        href: '/dashboard/messages/channels',
         icon: Hash,
       },
       {
-        title: "Threads",
-        href: "/dashboard/messages/threads",
+        title: 'Threads',
+        href: '/dashboard/messages/threads',
         icon: MessageSquare,
       },
     ],
   },
   {
-    title: "Team",
-    href: "/dashboard/team/members",
+    title: 'Team',
+    href: '/dashboard/team/members',
     icon: Users,
     items: [
       {
-        title: "Members",
-        href: "/dashboard/team/members",
+        title: 'Members',
+        href: '/dashboard/team/members',
         icon: Users,
       },
       {
-        title: "Roles",
-        href: "/dashboard/team/roles",
+        title: 'Roles',
+        href: '/dashboard/team/roles',
         icon: Shield,
       },
       {
-        title: "Workload",
-        href: "/dashboard/team/workload",
+        title: 'Workload',
+        href: '/dashboard/team/workload',
         icon: BarChart2,
       },
     ],
   },
   {
-    title: "Analytics",
-    href: "/dashboard/analytics/overview",
+    title: 'Analytics',
+    href: '/dashboard/analytics/overview',
     icon: BarChart2,
     items: [
       {
-        title: "Overview",
-        href: "/dashboard/analytics/overview",
+        title: 'Overview',
+        href: '/dashboard/analytics/overview',
         icon: LayoutDashboard,
       },
       {
-        title: "Projects",
-        href: "/dashboard/analytics/projects",
+        title: 'Projects',
+        href: '/dashboard/analytics/projects',
         icon: FolderKanban,
       },
       {
-        title: "Team",
-        href: "/dashboard/analytics/team",
+        title: 'Team',
+        href: '/dashboard/analytics/team',
         icon: Users,
       },
       {
-        title: "Time",
-        href: "/dashboard/analytics/time",
+        title: 'Time',
+        href: '/dashboard/analytics/time',
         icon: Clock,
       },
       {
-        title: "Custom Reports",
-        href: "/dashboard/analytics/reports",
+        title: 'Custom Reports',
+        href: '/dashboard/analytics/reports',
         icon: FileText,
+      },
+      {
+        title: 'Notification Delivery',
+        href: '/dashboard/analytics/notification-delivery',
+        icon: Bell,
       },
     ],
   },
   {
-    title: "Notifications",
-    href: "/dashboard/notifications/overview",
+    title: 'Notifications',
+    href: '/dashboard/notifications/overview',
     icon: Bell,
     items: [
       {
-        title: "Overview",
-        href: "/dashboard/notifications/overview",
+        title: 'Overview',
+        href: '/dashboard/notifications/overview',
         icon: LayoutDashboard,
       },
       {
-        title: "Settings",
-        href: "/dashboard/notifications/settings",
+        title: 'Settings',
+        href: '/dashboard/notifications/settings',
         icon: Settings,
       },
       {
-        title: "Templates",
-        href: "/dashboard/notifications/templates",
+        title: 'Templates',
+        href: '/dashboard/notifications/templates',
         icon: Layout,
+        items: [
+          {
+            title: 'Analytics',
+            href: '/dashboard/notifications/templates/analytics',
+            icon: BarChart2,
+          },
+        ],
       },
       {
-        title: "Rules",
-        href: "/dashboard/notifications/rules",
+        title: 'Rules',
+        href: '/dashboard/notifications/rules',
         icon: GitBranch,
+      },
+      {
+        title: 'AB Tests',
+        href: '/dashboard/notifications/ab-tests',
+        icon: GitBranch,
+      },
+      {
+        title: 'Analytics',
+        href: '/dashboard/notifications/analytics',
+        icon: BarChart2,
+      },
+      {
+        title: 'Campaigns',
+        href: '/dashboard/notifications/campaigns',
+        icon: MessageSquare,
+      },
+      {
+        title: 'Preferences',
+        href: '/dashboard/notifications/preferences',
+        icon: Settings,
       },
     ],
   },
   {
-    title: "Automation",
-    href: "/dashboard/automation/rules",
+    title: 'Automation',
+    href: '/dashboard/automation/rules',
     icon: Zap,
     items: [
       {
-        title: "Rules",
-        href: "/dashboard/automation/rules",
+        title: 'Rules',
+        href: '/dashboard/automation/rules',
         icon: GitBranch,
       },
       {
-        title: "Workflows",
-        href: "/dashboard/automation/workflows",
+        title: 'Workflows',
+        href: '/dashboard/automation/workflows',
         icon: GitMerge,
       },
       {
-        title: "Integrations",
-        href: "/dashboard/automation/integrations",
+        title: 'Integrations',
+        href: '/dashboard/automation/integrations',
         icon: Plug,
       },
     ],
   },
   {
-    title: "Settings",
-    href: "/dashboard/settings/general",
+    title: 'Settings',
+    href: '/dashboard/settings/general',
     icon: Settings,
     items: [
       {
-        title: "General",
-        href: "/dashboard/settings/general",
+        title: 'General',
+        href: '/dashboard/settings/general',
         icon: Settings,
       },
       {
-        title: "Workspace",
-        href: "/dashboard/settings/workspace",
+        title: 'Workspace',
+        href: '/dashboard/settings/workspace',
         icon: Layout,
       },
       {
-        title: "Team",
-        href: "/dashboard/settings/team",
+        title: 'Team',
+        href: '/dashboard/settings/team',
         icon: Users,
       },
       {
-        title: "Security",
-        href: "/dashboard/settings/security",
+        title: 'Security',
+        href: '/dashboard/settings/security',
         icon: Shield,
       },
       {
-        title: "API",
-        href: "/dashboard/settings/api",
+        title: 'API',
+        href: '/dashboard/settings/api',
         icon: Terminal,
+      },
+      {
+        title: 'Notifications',
+        href: '/dashboard/settings/notifications',
+        icon: Bell,
       },
     ],
   },
-]
+];
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function Sidebar({ className, ...props }: SidebarProps) {
-  const pathname = usePathname()
-  const isHydrated = useIsHydrated()
-  const [expandedItems, setExpandedItems] = usePersistentState<string[]>("sidebar-expanded", [])
-  const [focusedIndex, setFocusedIndex] = useState(-1)
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const pathname = usePathname();
+  const isHydrated = useIsHydrated();
+  const [expandedItems, setExpandedItems] = usePersistentState<string[]>(
+    'sidebar-expanded',
+    []
+  );
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     // Auto-expand parent of active item on initial load
-    const activeParent = sidebarNavItems.find(item =>
-      item.items?.some(subItem => pathname === subItem.href)
+    const activeParent = sidebarNavItems.find((item) =>
+      item.items?.some((subItem) => pathname === subItem.href)
     );
     if (activeParent && !expandedItems.includes(activeParent.href)) {
       setExpandedItems([...expandedItems, activeParent.href]);
@@ -335,22 +387,24 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleExpanded = (href: string) => {
-    setExpandedItems(current =>
+    setExpandedItems((current) =>
       current.includes(href)
-        ? current.filter(item => item !== href)
+        ? current.filter((item) => item !== href)
         : [...current, href]
-    )
-  }
+    );
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setFocusedIndex(prev => Math.min(prev + 1, sidebarNavItems.length - 1));
+        setFocusedIndex((prev) =>
+          Math.min(prev + 1, sidebarNavItems.length - 1)
+        );
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setFocusedIndex(prev => Math.max(prev - 1, 0));
+        setFocusedIndex((prev) => Math.max(prev - 1, 0));
         break;
       case 'Enter':
       case ' ':
@@ -365,7 +419,10 @@ export function Sidebar({ className, ...props }: SidebarProps) {
       case 'ArrowRight':
         e.preventDefault();
         const currentItem = sidebarNavItems[index];
-        if (currentItem.items?.length && !expandedItems.includes(currentItem.href)) {
+        if (
+          currentItem.items?.length &&
+          !expandedItems.includes(currentItem.href)
+        ) {
           toggleExpanded(currentItem.href);
         }
         break;
@@ -378,7 +435,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
         }
         break;
     }
-  }
+  };
 
   useEffect(() => {
     if (focusedIndex >= 0 && focusedIndex < itemRefs.current.length) {
@@ -386,64 +443,68 @@ export function Sidebar({ className, ...props }: SidebarProps) {
     }
   }, [focusedIndex]);
 
-  const renderNavItem = (item: SidebarNavItem, depth: number = 0, index: number) => {
-    const isActive = pathname === item.href
-    const hasSubItems = item.items && item.items.length > 0
-    const isExpanded = expandedItems.includes(item.href)
-    const isParentOfActive = hasSubItems && item.items?.some(
-      subItem => pathname === subItem.href || pathname.startsWith(subItem.href + '/')
-    )
+  const renderNavItem = (
+    item: SidebarNavItem,
+    depth: number = 0,
+    index: number
+  ) => {
+    const isActive = pathname === item.href;
+    const hasSubItems = item.items && item.items.length > 0;
+    const isExpanded = expandedItems.includes(item.href);
+    const isParentOfActive =
+      hasSubItems &&
+      item.items?.some(
+        (subItem) =>
+          pathname === subItem.href || pathname.startsWith(subItem.href + '/')
+      );
 
     const commonClassNames = cn(
-      "w-full flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-ring",
-      (isActive || isParentOfActive) ? "bg-accent" : "transparent",
-      depth > 0 ? "pl-8" : "",
-      !isHydrated && "invisible"
-    )
+      'w-full flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-ring',
+      isActive || isParentOfActive ? 'bg-accent' : 'transparent',
+      depth > 0 ? 'pl-8' : '',
+      !isHydrated && 'invisible'
+    );
 
     const handleItemClick = (e: React.MouseEvent) => {
       if (hasSubItems) {
-        e.preventDefault()
-        toggleExpanded(item.href)
+        e.preventDefault();
+        toggleExpanded(item.href);
       }
-    }
+    };
 
     const content = (
       <>
-        <div className="flex items-center flex-1">
-          <item.icon className="mr-2 h-4 w-4" />
+        <div className='flex items-center flex-1'>
+          <item.icon className='mr-2 h-4 w-4' />
           {item.title}
         </div>
         {hasSubItems && (
           <ChevronRight
             className={cn(
-              "h-4 w-4 transition-transform duration-200",
-              isExpanded ? "transform rotate-90" : ""
+              'h-4 w-4 transition-transform duration-200',
+              isExpanded ? 'transform rotate-90' : ''
             )}
           />
         )}
       </>
-    )
+    );
 
     return (
-      <div key={item.href} className="space-y-1">
-        <div className={cn(
-          "relative",
-          !isHydrated && "overflow-hidden"
-        )}>
+      <div key={item.href} className='space-y-1'>
+        <div className={cn('relative', !isHydrated && 'overflow-hidden')}>
           {!isHydrated && (
-            <div className="absolute inset-0 flex items-center px-3">
-              <div className="h-4 w-4 animate-pulse rounded bg-muted" />
-              <div className="ml-2 h-4 w-24 animate-pulse rounded bg-muted" />
+            <div className='absolute inset-0 flex items-center px-3'>
+              <div className='h-4 w-4 animate-pulse rounded bg-muted' />
+              <div className='ml-2 h-4 w-24 animate-pulse rounded bg-muted' />
             </div>
           )}
           {hasSubItems ? (
             <button
-              ref={el => itemRefs.current[index] = el}
+              ref={(el) => (itemRefs.current[index] = el)}
               onClick={handleItemClick}
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={commonClassNames}
-              role="treeitem"
+              role='treeitem'
               aria-expanded={isExpanded}
               tabIndex={focusedIndex === index ? 0 : -1}
             >
@@ -452,11 +513,11 @@ export function Sidebar({ className, ...props }: SidebarProps) {
           ) : (
             <Link
               href={item.href}
-              ref={el => itemRefs.current[index] = el as any}
+              ref={(el) => (itemRefs.current[index] = el as any)}
               onClick={handleItemClick}
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={commonClassNames}
-              role="treeitem"
+              role='treeitem'
               tabIndex={focusedIndex === index ? 0 : -1}
             >
               {content}
@@ -467,58 +528,53 @@ export function Sidebar({ className, ...props }: SidebarProps) {
           {hasSubItems && isExpanded && isHydrated && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
+              animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="overflow-hidden"
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              className='overflow-hidden'
             >
-              <div className="pl-4 space-y-1">
-                {item.items.map((subItem, subIndex) => 
-                  renderNavItem(
-                    subItem, 
-                    depth + 1, 
-                    index + subIndex + 1
-                  )
+              <div className='pl-4 space-y-1'>
+                {item.items.map((subItem, subIndex) =>
+                  renderNavItem(subItem, depth + 1, index + subIndex + 1)
                 )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <nav
       className={cn(
-        "hidden flex-col md:flex md:w-[220px] lg:w-[240px]",
+        'hidden flex-col md:flex md:w-[220px] lg:w-[240px]',
         className
       )}
       {...props}
-      role="tree"
-      aria-label="Navigation menu"
+      role='tree'
+      aria-label='Navigation menu'
     >
-      <div className="flex-1 space-y-4">
-        <div className="px-3">
-          <div className="space-y-1">
-            <div className={cn(
-              "mb-2 px-4",
-              !isHydrated && "flex items-center"
-            )}>
+      <div className='flex-1 space-y-4'>
+        <div className='px-3'>
+          <div className='space-y-1'>
+            <div
+              className={cn('mb-2 px-4', !isHydrated && 'flex items-center')}
+            >
               {!isHydrated ? (
-                <div className="h-6 w-20 animate-pulse rounded bg-muted" />
+                <div className='h-6 w-20 animate-pulse rounded bg-muted' />
               ) : (
-                <h2 className="text-xl font-semibold tracking-tight">
+                <h2 className='text-xl font-semibold tracking-tight'>
                   Overview
                 </h2>
               )}
             </div>
-            {sidebarNavItems.map((item, index) => 
+            {sidebarNavItems.map((item, index) =>
               renderNavItem(item, 0, index)
             )}
           </div>
         </div>
       </div>
     </nav>
-  )
+  );
 }
