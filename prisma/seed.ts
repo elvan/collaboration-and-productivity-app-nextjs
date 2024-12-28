@@ -59,6 +59,23 @@ async function createDefaultRoles() {
 }
 
 async function main() {
+  // Clean up existing data in the correct order
+  console.log('Cleaning up existing data...');
+  await prisma.task.deleteMany();
+  await prisma.taskPriority.deleteMany();
+  await prisma.taskStatus.deleteMany();
+  await prisma.taskList.deleteMany();
+  await prisma.project.deleteMany();
+  await prisma.team.deleteMany();
+  await prisma.workspaceRole.deleteMany();
+  await prisma.workspaceMember.deleteMany();
+  await prisma.workspace.deleteMany();
+  await prisma.userRole.deleteMany();
+  await prisma.permission.deleteMany();
+  await prisma.role.deleteMany();
+  await prisma.user.deleteMany();
+
+  console.log('Creating default roles...');
   // Create default roles first
   const { adminRole, userRole } = await createDefaultRoles();
 
@@ -69,7 +86,7 @@ async function main() {
       name: 'Admin User',
       email: 'admin@example.com',
       password: adminPassword,
-      userRole: {
+      userRoles: {
         create: {
           roleId: adminRole.id,
         },
@@ -84,7 +101,7 @@ async function main() {
       name: 'Test User',
       email: 'test@example.com',
       password: hashedPassword,
-      userRole: {
+      userRoles: {
         create: {
           roleId: userRole.id,
         },
@@ -98,12 +115,24 @@ async function main() {
       name: 'Test Workspace',
       description: 'A workspace for testing',
       ownerId: user.id,
-      members: {
-        create: {
-          userId: user.id,
-          role: 'MEMBER',
-        },
-      },
+    },
+  });
+
+  // Create workspace role
+  const workspaceRole = await prisma.workspaceRole.create({
+    data: {
+      workspaceId: workspace.id,
+      userId: user.id,
+      roleId: adminRole.id,
+    },
+  });
+
+  // Create workspace member with role
+  await prisma.workspaceMember.create({
+    data: {
+      workspaceId: workspace.id,
+      userId: user.id,
+      roleId: workspaceRole.id,
     },
   });
 
