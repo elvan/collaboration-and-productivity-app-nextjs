@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { SystemRole } from "@/types/roles"
 
 export async function requireAdminAccess() {
   const session = await getServerSession(authOptions)
@@ -14,7 +15,7 @@ export async function requireAdminAccess() {
     where: {
       userId: session.user.id,
       role: {
-        name: "Admin" // Match the exact role name from the database
+        name: SystemRole.ADMIN
       }
     },
     include: {

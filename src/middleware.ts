@@ -1,5 +1,6 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
+import { SystemRole } from "@/types/roles"
 
 export default withAuth(
   async function middleware(req) {
@@ -32,7 +33,7 @@ export default withAuth(
       // Get the user's role from the token
       const userRole = token?.role as string | undefined
       
-      if (userRole !== "Admin") {
+      if (userRole !== SystemRole.ADMIN) {
         console.log("Access denied - Not an admin:", {
           userId: token.id,
           role: userRole,

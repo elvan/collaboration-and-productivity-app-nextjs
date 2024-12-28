@@ -1,5 +1,6 @@
 import { PrismaClient, PermissionAction, PermissionResource } from '@prisma/client';
 import { hash } from 'bcryptjs';
+import { SystemRole } from '../src/types/roles';
 
 const prisma = new PrismaClient();
 
@@ -7,7 +8,7 @@ async function createDefaultRoles() {
   // Create Admin Role
   const adminRole = await prisma.role.create({
     data: {
-      name: "Admin",
+      name: SystemRole.ADMIN,
       description: "Full system access",
       isSystem: true,
       permissions: {
@@ -24,7 +25,7 @@ async function createDefaultRoles() {
   // Create User Role
   const userRole = await prisma.role.create({
     data: {
-      name: "User",
+      name: SystemRole.USER,
       description: "Standard user access",
       isSystem: true,
       permissions: {
@@ -42,7 +43,7 @@ async function createDefaultRoles() {
   // Create Guest Role
   const guestRole = await prisma.role.create({
     data: {
-      name: "Guest",
+      name: SystemRole.GUEST,
       description: "Limited access",
       isSystem: true,
       permissions: {
