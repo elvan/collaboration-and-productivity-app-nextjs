@@ -1,54 +1,55 @@
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import { withAuth } from "next-auth/middleware"
+import { NextResponse } from "next/server"
 
 export default withAuth(
   async function middleware(req) {
-    const token = req.nextauth.token;
-    const isAuth = !!token;
+    const token = req.nextauth.token
+    const isAuth = !!token
     const isAuthPage =
       req.nextUrl.pathname.startsWith("/login") ||
-      req.nextUrl.pathname.startsWith("/register");
+      req.nextUrl.pathname.startsWith("/register")
 
     if (isAuthPage) {
       if (isAuth) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        return NextResponse.redirect(new URL("/dashboard", req.url))
       }
-      return null;
+      return null
     }
 
     if (!isAuth) {
-      let from = req.nextUrl.pathname;
+      let from = req.nextUrl.pathname
       if (req.nextUrl.search) {
-        from += req.nextUrl.search;
+        from += req.nextUrl.search
       }
 
       return NextResponse.redirect(
         new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
-      );
+      )
     }
 
-    // Check admin access for admin routes
+    // For admin routes, check if the user has admin role
     if (req.nextUrl.pathname.startsWith("/admin")) {
-      try {
-        const response = await fetch(new URL("/api/admin/access", req.url));
-        const { hasAccess } = await response.json();
-        
-        if (!hasAccess) {
-          return NextResponse.redirect(new URL("/dashboard", req.url));
-        }
-      } catch (error) {
-        // If there's an error checking access, redirect to dashboard
-        console.error("Error checking admin access:", error);
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+      // Get the user's role from the token
+      const userRole = token?.role as string | undefined
+      
+      if (userRole !== "Admin") {
+        console.log("Access denied - Not an admin:", {
+          userId: token.id,
+          role: userRole,
+          path: req.nextUrl.pathname
+        })
+        return NextResponse.redirect(new URL("/dashboard", req.url))
       }
     }
+
+    return NextResponse.next()
   },
   {
     callbacks: {
       authorized: ({ token }) => !!token,
     },
   }
-);
+)
 
 // Protect all routes except public ones
 export const config = {
@@ -71,4 +72,4 @@ export const config = {
     "/messages/:path*",
     "/admin/:path*", // Add admin routes to protected paths
   ],
-};
+}

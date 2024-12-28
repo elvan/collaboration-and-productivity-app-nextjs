@@ -56,42 +56,70 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.log("Missing credentials");
+            return null;
+          }
+
+          console.log("Looking up user:", credentials.email);
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email,
+            },
+            include: {
+              userRole: {
+                include: {
+                  role: true,
+                },
+              },
+            },
+          });
+
+          if (!user) {
+            console.log("User not found:", credentials.email);
+            return null;
+          }
+
+          console.log("Checking password for user:", user.email);
+          const isPasswordValid = await compare(credentials.password, user.password);
+
+          if (!isPasswordValid) {
+            console.log("Invalid password for user:", user.email);
+            return null;
+          }
+
+          // Get the user's role
+          const userRole = user.userRole[0]?.role.name;
+          console.log("User authenticated successfully:", {
+            email: user.email,
+            role: userRole,
+            roles: user.userRole,
+          });
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: userRole,
+          };
+        } catch (error) {
+          console.error("Auth error:", error);
           return null;
         }
-
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
-        });
-
-        if (!user) {
-          return null;
-        }
-
-        const isPasswordValid = await compare(credentials.password, user.password);
-
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, account }) {
       if (user) {
+        console.log("Setting JWT token:", { user });
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
         token.picture = user.image;
+        token.role = user.role;
       }
 
       // Refresh token rotation
@@ -112,13 +140,15 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id as string;
-        session.user.email = token.email;
-        session.user.name = token.name;
-        session.user.image = token.picture as string;
-        session.accessToken = token.accessToken;
+        console.log("Setting session:", { token });
+        session.user.id = token.id;
+        session.user.email = token.email as string;
+        session.user.name = token.name as string;
+        session.user.image = token.picture;
+        session.user.role = token.role as string;
       }
       return session;
     },
   },
+  debug: true, // Enable debug logs
 };

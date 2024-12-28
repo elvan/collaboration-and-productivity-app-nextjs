@@ -14,9 +14,18 @@ export async function requireAdminAccess() {
     where: {
       userId: session.user.id,
       role: {
-        name: "admin"
+        name: "Admin" // Match the exact role name from the database
       }
+    },
+    include: {
+      role: true
     }
+  })
+
+  console.log("Admin access check:", {
+    userId: session.user.id,
+    hasAccess: !!userRole,
+    role: userRole?.role
   })
 
   if (!userRole) {

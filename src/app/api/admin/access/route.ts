@@ -7,18 +7,16 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
+      console.log('No session found')
       return NextResponse.json({ hasAccess: false })
     }
 
-    // Check if user has admin role
+    // Check if user has admin role - using the exact role name from the database
     const userRole = await prisma.userRole.findFirst({
       where: {
         userId: session.user.id,
         role: {
-          name: {
-            mode: 'insensitive',
-            equals: 'admin'
-          }
+          name: "Admin" // Match the exact role name from the database
         }
       },
       include: {
@@ -26,7 +24,16 @@ export async function GET() {
       }
     })
 
-    console.log('Admin access check for user:', session.user.id, 'Result:', !!userRole, 'Role:', userRole?.role)
+    console.log('Admin access check:', {
+      userId: session.user.id,
+      hasAccess: !!userRole,
+      role: userRole?.role,
+      query: {
+        userId: session.user.id,
+        roleName: "Admin"
+      }
+    })
+
     return NextResponse.json({ hasAccess: !!userRole })
   } catch (error) {
     console.error("Error checking admin access:", error)
