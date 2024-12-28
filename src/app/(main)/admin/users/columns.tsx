@@ -48,6 +48,9 @@ export const columns: ColumnDef<User>[] = [
         </div>
       )
     },
+    enableSorting: true,
+    enableHiding: true,
+    filterFn: "includesString",
   },
   {
     accessorKey: "email",
@@ -63,6 +66,9 @@ export const columns: ColumnDef<User>[] = [
         </div>
       )
     },
+    enableSorting: true,
+    enableHiding: true,
+    filterFn: "includesString",
   },
   {
     accessorKey: "userRole",
@@ -81,9 +87,18 @@ export const columns: ColumnDef<User>[] = [
         </div>
       )
     },
+    enableSorting: true,
+    enableHiding: true,
+    filterFn: (row, id, value) => {
+      const roles = row.original.userRole || []
+      return roles.some(userRole => 
+        userRole.role.name.toLowerCase().includes(value.toLowerCase())
+      )
+    },
   },
   {
     id: "actions",
     cell: ({ row }) => <DataTableRowActions row={row} />,
+    enableHiding: false,
   },
 ]

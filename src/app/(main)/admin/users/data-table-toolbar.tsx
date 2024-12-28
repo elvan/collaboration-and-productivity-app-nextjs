@@ -2,10 +2,16 @@
 
 import { Table } from "@tanstack/react-table"
 import { X } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTableViewOptions } from "./data-table-view-options"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -20,13 +26,31 @@ export function DataTableToolbar<TData>({
     <div className="flex items-center justify-between">
       <div className="flex flex-1 items-center space-x-2">
         <Input
-          placeholder="Filter users..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
+          placeholder="Search users..."
+          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
+            table.getColumn("name")?.setFilterValue(event.target.value)
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
+        {table.getColumn("userRole") && (
+          <Select
+            value={(table.getColumn("userRole")?.getFilterValue() as string) ?? "all"}
+            onValueChange={(value) =>
+              table.getColumn("userRole")?.setFilterValue(value === "all" ? "" : value)
+            }
+          >
+            <SelectTrigger className="h-8 w-[150px]">
+              <SelectValue placeholder="Filter by role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All roles</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="user">User</SelectItem>
+              <SelectItem value="manager">Manager</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
         {isFiltered && (
           <Button
             variant="ghost"
