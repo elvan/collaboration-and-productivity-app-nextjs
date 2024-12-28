@@ -1,0 +1,101 @@
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  MANAGE
+}
+
+enum PermissionResource {
+  USERS
+  ROLES
+  TEAMS
+  PROJECTS
+  TASKS
+  WORKSPACES
+  SETTINGS
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  permissions    Permission[]
+  userRoles      UserRole[]
+  workspaceRoles WorkspaceRole[]
+  teamRoles      TeamRole[]
+
+  @@unique([name])
+}
+
+model Permission {
+  id       String             @id @default(cuid())
+  action   PermissionAction
+  resource PermissionResource
+  roleId   String
+
+  // Relations
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, action, resource])
+  @@index([roleId])
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+model WorkspaceRole {
+  id          String   @id @default(cuid())
+  workspaceId String
+  roleId      String
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  role      Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId, roleId])
+  @@index([workspaceId])
+  @@index([roleId])
+  @@index([userId])
+}
+
+model TeamRole {
+  id        String   @id @default(cuid())
+  teamId    String
+  roleId    String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId, roleId])
+  @@index([teamId])
+  @@index([roleId])
+  @@index([userId])
+}

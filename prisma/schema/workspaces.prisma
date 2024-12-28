@@ -7,11 +7,12 @@ model Workspace {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  owner     User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
-  members   WorkspaceMember[]
-  teams     Team[]
-  projects  Project[]
-  analytics WorkspaceAnalytics?
+  owner         User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  members       WorkspaceMember[]
+  teams         Team[]
+  projects      Project[]
+  analytics     WorkspaceAnalytics?
+  WorkspaceRole WorkspaceRole[]
 
   @@index([ownerId])
 }

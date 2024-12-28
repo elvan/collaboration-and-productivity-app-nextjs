@@ -362,6 +362,23 @@ const sidebarNavItems: SidebarNavItem[] = [
       },
     ],
   },
+  {
+    title: 'Admin',
+    icon: Shield,
+    href: "/admin",
+    items: [
+      {
+        title: "Users",
+        href: "/admin/users",
+        icon: Users,
+      },
+      {
+        title: "Roles",
+        href: "/admin/roles",
+        icon: Shield,
+      },
+    ],
+  },
 ];
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}

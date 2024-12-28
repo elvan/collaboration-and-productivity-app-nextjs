@@ -12,6 +12,7 @@ model Team {
   owner     User         @relation("TeamOwner", fields: [ownerId], references: [id])
   members   TeamMember[]
   projects  Project[]
+  TeamRole  TeamRole[]
 
   @@index([workspaceId])
   @@index([ownerId])
