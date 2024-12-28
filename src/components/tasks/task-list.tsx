@@ -20,7 +20,15 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { TaskDialog } from "./task-dialog"
-import { MoreHorizontal, Pencil, Trash2, ChevronRight } from "lucide-react"
+import {
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  ChevronRight,
+  Download,
+  MoveRight,
+  Users,
+} from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 
@@ -63,6 +71,7 @@ export function TaskList({
 }: TaskListProps) {
   const router = useRouter()
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   const statusColors: Record<string, string> = {
     todo: "bg-slate-500",
@@ -95,6 +104,60 @@ export function TaskList({
       router.refresh()
     } catch (error) {
       console.error("Failed to update task:", error)
+    }
+  }
+
+  const handleBulkAction = async (action: string, data?: any) => {
+    try {
+      const response = await fetch("/api/tasks/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          taskIds: selectedTasks,
+          data,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to perform bulk action")
+      }
+
+      router.refresh()
+    } catch (error) {
+      console.error("Error performing bulk action:", error)
+    }
+  }
+
+  const handleExport = async (format: "csv" | "json") => {
+    try {
+      setIsExporting(true)
+      const response = await fetch("/api/tasks/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          format,
+          taskIds: selectedTasks.length > 0 ? selectedTasks : undefined,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to export tasks")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `tasks-${format === "csv" ? "csv" : "json"}`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Error exporting tasks:", error)
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -194,7 +257,78 @@ export function TaskList({
   }
 
   return (
-    <>
+    <div className="space-y-4">
+      {selectedTasks.length > 0 && (
+        <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+          <span className="text-sm text-muted-foreground">
+            {selectedTasks.length} tasks selected
+          </span>
+          <div className="flex-1" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Users className="h-4 w-4 mr-2" />
+                Assign To
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {projectMembers.map((member) => (
+                <DropdownMenuItem
+                  key={member.id}
+                  onClick={() =>
+                    handleBulkAction("update", { assigneeId: member.id })
+                  }
+                >
+                  {member.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleBulkAction("delete")}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <MoveRight className="h-4 w-4 mr-2" />
+                Move To
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleBulkAction("update", { status: "todo" })}>
+                To Do
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleBulkAction("update", { status: "in_progress" })}>
+                In Progress
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleBulkAction("update", { status: "done" })}>
+                Done
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport("csv")}>
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("json")}>
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -221,6 +355,6 @@ export function TaskList({
         projectMembers={projectMembers}
         mode="edit"
       />
-    </>
+    </div>
   )
 }
