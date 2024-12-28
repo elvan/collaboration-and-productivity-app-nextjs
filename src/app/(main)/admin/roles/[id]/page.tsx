@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -54,12 +56,65 @@ export default function RoleForm({ params }: { params: { id: string } }) {
     }
   })
 
+  const { data: role, error } = useQuery({
+    queryKey: ["role", params.id],
+    queryFn: async () => {
+      if (isNew) return null
+      const response = await fetch(`/api/admin/roles/${params.id}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch role")
+      }
+      return response.json()
+    },
+    enabled: !isNew
+  })
+
+  useEffect(() => {
+    if (!role) return
+
+    // Transform the permissions data to match the form structure
+    const formattedPermissions = permissionResources.map(resource => {
+      const resourcePermissions = role.permissions.filter(
+        p => p.resource === resource
+      )
+      return {
+        resource,
+        actions: resourcePermissions.map(p => p.action)
+      }
+    })
+
+    form.reset({
+      name: role.name,
+      description: role.description,
+      permissions: formattedPermissions
+    })
+  }, [role, form])
+
+  if (error) {
+    toast({
+      title: "Error",
+      description: "Failed to fetch role details. Please try again.",
+      variant: "destructive",
+    })
+  }
+
   async function onSubmit(data: RoleFormValues) {
     try {
+      // Transform the permissions data to match the API structure
+      const transformedPermissions = data.permissions.flatMap(p =>
+        p.actions.map(action => ({
+          resource: p.resource,
+          action
+        }))
+      )
+
       const response = await fetch(`/api/admin/roles${isNew ? "" : `/${params.id}`}`, {
         method: isNew ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          permissions: transformedPermissions
+        }),
       })
 
       if (!response.ok) throw new Error("Failed to save role")
@@ -192,8 +247,12 @@ export default function RoleForm({ params }: { params: { id: string } }) {
 
           <div className="flex justify-end space-x-4">
             <Button
+              type="button"
               variant="outline"
-              onClick={() => router.push("/admin/roles")}
+              onClick={() => {
+                router.push("/admin/roles")
+                router.refresh()
+              }}
             >
               Cancel
             </Button>
