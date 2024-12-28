@@ -2,6 +2,7 @@
 
 import { Row } from "@tanstack/react-table"
 import { MoreHorizontal, Pen, Trash } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -12,7 +13,6 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useRouter } from "next/navigation"
 import { toast } from "@/components/ui/use-toast"
 
 interface DataTableRowActionsProps<TData> {
@@ -59,7 +59,7 @@ export function DataTableRowActions<TData>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push(`/admin/roles/${row.original.id}`)}>
           <Pen className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
           Edit
         </DropdownMenuItem>

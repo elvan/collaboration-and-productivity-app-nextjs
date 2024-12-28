@@ -59,6 +59,21 @@ export const columns: ColumnDef<Role>[] = [
     },
   },
   {
+    accessorKey: "permissions",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Permissions" />
+    ),
+    cell: ({ row }) => {
+      const permissions = row.original.permissions || []
+      const totalPermissions = permissions.length
+      return (
+        <div className="flex w-[100px] items-center">
+          <Badge variant="secondary">{totalPermissions}</Badge>
+        </div>
+      )
+    },
+  },
+  {
     accessorKey: "_count.userRoles",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Users" />
