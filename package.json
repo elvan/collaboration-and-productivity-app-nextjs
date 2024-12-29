@@ -71,6 +71,7 @@
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "liquidjs": "^10.19.1",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.344.0",
     "net": "^1.0.2",
     "next": "^14.2.18",
