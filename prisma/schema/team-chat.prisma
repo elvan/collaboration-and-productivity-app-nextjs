@@ -1,0 +1,66 @@
+model Channel {
+  id          String      @id @default(cuid())
+  name        String
+  isPrivate   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdById String
+  createdBy   User        @relation("ChannelCreator", fields: [createdById], references: [id])
+  members     ChannelMember[]
+  messages    Message[]
+
+  @@index([createdById])
+}
+
+model ChannelMember {
+  id          String      @id @default(cuid())
+  channelId   String
+  userId      String
+  role        String      @default("MEMBER") // ADMIN, MEMBER
+  joinedAt    DateTime    @default(now())
+  channel     Channel     @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@index([channelId])
+  @@index([userId])
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  content     String
+  channelId   String
+  userId      String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  channel     Channel     @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+  reactions   Reaction[]
+  thread      Thread?     @relation(fields: [threadId], references: [id])
+  threadId    String?
+
+  @@index([channelId])
+  @@index([userId])
+  @@index([threadId])
+}
+
+model Thread {
+  id          String      @id @default(cuid())
+  messages    Message[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Reaction {
+  id          String      @id @default(cuid())
+  emoji       String
+  messageId   String
+  userId      String
+  createdAt   DateTime    @default(now())
+  message     Message     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@index([userId])
+}
