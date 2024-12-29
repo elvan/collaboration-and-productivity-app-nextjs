@@ -1,35 +1,26 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
+import { Project } from '@prisma/client'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+} from '@/components/ui/dropdown-menu'
 import {
-  MoreHorizontal,
-  Pencil,
-  Trash,
-  UserPlus,
-  CheckCircle,
-  XCircle,
-} from "lucide-react"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Project } from "@prisma/client"
-import { toast } from "@/components/ui/use-toast"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { useState } from 'react'
+import { MoreVertical, Archive, Trash2, AlertTriangle } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
 
 interface ProjectActionsProps {
   project: Project
@@ -37,136 +28,129 @@ interface ProjectActionsProps {
 
 export function ProjectActions({ project }: ProjectActionsProps) {
   const router = useRouter()
-  const [showDeleteAlert, setShowDeleteAlert] = React.useState<boolean>(false)
-  const [isLoading, setIsLoading] = React.useState<boolean>(false)
+  const { toast } = useToast()
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  async function deleteProject() {
-    setIsLoading(true)
-    const response = await fetch(`/api/projects/${project.id}`, {
-      method: "DELETE",
-    })
-
-    if (!response?.ok) {
-      toast({
-        title: "Something went wrong.",
-        description: "Your project was not deleted. Please try again.",
-        variant: "destructive",
+  const handleArchive = async () => {
+    try {
+      const response = await fetch(`/api/projects/${project.id}/archive`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
-      return
+
+      if (!response.ok) {
+        throw new Error('Failed to archive project')
+      }
+
+      toast({
+        title: 'Project archived',
+        description: 'The project has been moved to archives.',
+      })
+
+      router.refresh()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to archive project. Please try again.',
+        variant: 'destructive',
+      })
     }
-
-    toast({
-      description: "Your project has been deleted.",
-    })
-
-    router.refresh()
-    setIsLoading(false)
   }
 
-  async function updateProjectStatus(status: string) {
-    setIsLoading(true)
-    const response = await fetch(`/api/projects/${project.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ status }),
-    })
-
-    if (!response?.ok) {
-      toast({
-        title: "Something went wrong.",
-        description: "Your project status was not updated. Please try again.",
-        variant: "destructive",
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true)
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'DELETE',
       })
-      return
+
+      if (!response.ok) {
+        throw new Error('Failed to delete project')
+      }
+
+      toast({
+        title: 'Project deleted',
+        description: 'The project has been permanently deleted.',
+      })
+
+      router.push('/projects')
+      router.refresh()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete project. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
     }
-
-    toast({
-      description: "Your project status has been updated.",
-    })
-
-    router.refresh()
-    setIsLoading(false)
   }
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-          >
-            <MoreHorizontal className="h-4 w-4" />
+          <Button variant="ghost" size="icon">
+            <MoreVertical className="h-4 w-4" />
             <span className="sr-only">Open menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[160px]">
-          <DropdownMenuItem>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleArchive}>
+            <Archive className="mr-2 h-4 w-4" />
+            Archive Project
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add Member
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {project.status !== "completed" && (
-            <DropdownMenuItem
-              onClick={() => updateProjectStatus("completed")}
-              disabled={isLoading}
-            >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Mark as Completed
-            </DropdownMenuItem>
-          )}
-          {project.status !== "active" && (
-            <DropdownMenuItem
-              onClick={() => updateProjectStatus("active")}
-              disabled={isLoading}
-            >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Mark as Active
-            </DropdownMenuItem>
-          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onSelect={() => setShowDeleteAlert(true)}
+            onClick={() => setShowDeleteDialog(true)}
+            className="text-red-600"
           >
-            <Trash className="mr-2 h-4 w-4" />
-            Delete
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Project
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Are you sure you want to delete this project?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your
-              project and remove all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={deleteProject}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Project</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this project? This action cannot be
+              undone and will permanently delete the project and all its data.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2 rounded-lg border p-4">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <div className="text-sm">
+              <p className="font-medium">Warning</p>
+              <p className="text-muted-foreground">
+                All tasks, files, and comments will be permanently deleted.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
             >
-              {isLoading ? (
-                <XCircle className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash className="mr-2 h-4 w-4" />
-              )}
-              <span>Delete</span>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Project'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

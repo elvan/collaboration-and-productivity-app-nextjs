@@ -1,134 +1,215 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { DragDropContext, Droppable } from '@hello-pangea/dnd'
-import { BoardColumn } from './board-column'
-import { Task } from '@prisma/client'
-import { useToast } from '@/components/ui/use-toast'
+import { useState } from 'react'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import { useUpdateTask } from '@/hooks/use-update-task'
+import { Task, TaskStatus } from '@prisma/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Plus, Search, Filter, MoreVertical } from 'lucide-react'
+import { TaskCard } from './task-card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface BoardViewProps {
   projectId: string
   initialTasks: Task[]
 }
 
-const defaultColumns = {
-  todo: { id: 'todo', title: 'To Do', taskIds: [] },
-  inProgress: { id: 'inProgress', title: 'In Progress', taskIds: [] },
-  review: { id: 'review', title: 'Review', taskIds: [] },
-  done: { id: 'done', title: 'Done', taskIds: [] },
+interface Column {
+  id: TaskStatus
+  title: string
+  color: string
+  tasks: Task[]
 }
 
+const defaultColumns: Column[] = [
+  {
+    id: 'TODO',
+    title: 'To Do',
+    color: 'bg-gray-100',
+    tasks: [],
+  },
+  {
+    id: 'IN_PROGRESS',
+    title: 'In Progress',
+    color: 'bg-blue-100',
+    tasks: [],
+  },
+  {
+    id: 'IN_REVIEW',
+    title: 'In Review',
+    color: 'bg-yellow-100',
+    tasks: [],
+  },
+  {
+    id: 'DONE',
+    title: 'Done',
+    color: 'bg-green-100',
+    tasks: [],
+  },
+]
+
 export function BoardView({ projectId, initialTasks }: BoardViewProps) {
-  const { toast } = useToast()
-  const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [tasks, setTasks] = useState(initialTasks)
+  const [searchQuery, setSearchQuery] = useState('')
   const [columns, setColumns] = useState(defaultColumns)
+  const updateTask = useUpdateTask()
 
-  useEffect(() => {
-    // Organize tasks into columns based on their status
-    const newColumns = { ...defaultColumns }
-    tasks.forEach((task) => {
-      const status = task.status.toLowerCase()
-      const columnId = status === 'in_progress' ? 'inProgress' : status
-      if (newColumns[columnId]) {
-        newColumns[columnId].taskIds.push(task.id)
-      }
-    })
-    setColumns(newColumns)
-  }, [tasks])
+  const filteredTasks = tasks.filter(task =>
+    task.title.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
-  const onDragEnd = async (result) => {
-    const { destination, source, draggableId } = result
+  const boardColumns = columns.map(column => ({
+    ...column,
+    tasks: filteredTasks.filter(task => task.status === column.id),
+  }))
+
+  const onDragEnd = (result: any) => {
+    const { source, destination, draggableId } = result
 
     if (!destination) return
 
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return
-    }
+    // Same column move
+    if (source.droppableId === destination.droppableId) {
+      const column = boardColumns.find(col => col.id === source.droppableId)
+      if (!column) return
 
-    // Update columns
-    const startColumn = columns[source.droppableId]
-    const endColumn = columns[destination.droppableId]
+      const newTasks = Array.from(column.tasks)
+      const [removed] = newTasks.splice(source.index, 1)
+      newTasks.splice(destination.index, 0, removed)
 
-    if (startColumn === endColumn) {
-      const newTaskIds = Array.from(startColumn.taskIds)
-      newTaskIds.splice(source.index, 1)
-      newTaskIds.splice(destination.index, 0, draggableId)
+      const newColumns = boardColumns.map(col =>
+        col.id === source.droppableId ? { ...col, tasks: newTasks } : col
+      )
 
-      const newColumn = {
-        ...startColumn,
-        taskIds: newTaskIds,
-      }
-
-      setColumns({
-        ...columns,
-        [newColumn.id]: newColumn,
-      })
+      setColumns(newColumns)
     } else {
-      // Moving from one column to another
-      const startTaskIds = Array.from(startColumn.taskIds)
-      startTaskIds.splice(source.index, 1)
-      const newStart = {
-        ...startColumn,
-        taskIds: startTaskIds,
-      }
+      // Cross column move
+      const sourceColumn = boardColumns.find(col => col.id === source.droppableId)
+      const destColumn = boardColumns.find(col => col.id === destination.droppableId)
+      if (!sourceColumn || !destColumn) return
 
-      const endTaskIds = Array.from(endColumn.taskIds)
-      endTaskIds.splice(destination.index, 0, draggableId)
-      const newEnd = {
-        ...endColumn,
-        taskIds: endTaskIds,
-      }
+      const sourceTasks = Array.from(sourceColumn.tasks)
+      const destTasks = Array.from(destColumn.tasks)
+      const [removed] = sourceTasks.splice(source.index, 1)
+      destTasks.splice(destination.index, 0, removed)
 
-      setColumns({
-        ...columns,
-        [newStart.id]: newStart,
-        [newEnd.id]: newEnd,
+      const newColumns = boardColumns.map(col => {
+        if (col.id === source.droppableId) return { ...col, tasks: sourceTasks }
+        if (col.id === destination.droppableId) return { ...col, tasks: destTasks }
+        return col
       })
 
-      // Update task status in the database
-      try {
-        const response = await fetch(`/api/tasks/${draggableId}/status`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            status: destination.droppableId === 'inProgress' ? 'in_progress' : destination.droppableId,
-          }),
-        })
+      setColumns(newColumns)
 
-        if (!response.ok) {
-          throw new Error('Failed to update task status')
-        }
-
-        toast({
-          title: 'Task updated',
-          description: 'Task status has been updated successfully.',
-        })
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to update task status. Please try again.',
-          variant: 'destructive',
-        })
-      }
+      // Update task status in the backend
+      updateTask.mutate({
+        projectId,
+        taskId: draggableId,
+        data: {
+          status: destination.droppableId as TaskStatus,
+        },
+      })
     }
   }
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-4 overflow-x-auto p-4">
-        {Object.values(columns).map((column) => (
-          <BoardColumn
-            key={column.id}
-            column={column}
-            tasks={tasks.filter((task) => column.taskIds.includes(task.id))}
+    <div className="flex h-full flex-col space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Input
+            placeholder="Search tasks..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-64"
+            leftIcon={<Search className="h-4 w-4 text-gray-400" />}
           />
-        ))}
+          <Button variant="outline" size="icon">
+            <Filter className="h-4 w-4" />
+          </Button>
+        </div>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Task
+        </Button>
       </div>
-    </DragDropContext>
+
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="flex h-full space-x-4 overflow-x-auto pb-4">
+          {boardColumns.map(column => (
+            <div
+              key={column.id}
+              className="flex h-full w-80 flex-none flex-col rounded-lg border bg-card"
+            >
+              <div className={`flex items-center justify-between rounded-t-lg border-b p-3 ${column.color}`}>
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-semibold">{column.title}</h3>
+                  <span className="rounded bg-white/50 px-2 py-0.5 text-xs">
+                    {column.tasks.length}
+                  </span>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem>Edit Column</DropdownMenuItem>
+                    <DropdownMenuItem>Clear Column</DropdownMenuItem>
+                    <DropdownMenuItem className="text-red-600">
+                      Delete Column
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <Droppable droppableId={column.id}>
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`flex-1 space-y-2 overflow-y-auto p-2 ${
+                      snapshot.isDraggingOver ? 'bg-accent/50' : ''
+                    }`}
+                  >
+                    {column.tasks.map((task, index) => (
+                      <Draggable key={task.id} draggableId={task.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className={snapshot.isDragging ? 'opacity-50' : ''}
+                          >
+                            <TaskCard task={task} index={index} />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+
+              <div className="border-t p-2">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-muted-foreground"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Task
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DragDropContext>
+    </div>
   )
 }
