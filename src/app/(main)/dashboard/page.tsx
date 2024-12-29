@@ -5,10 +5,13 @@ import { prisma } from "@/lib/prisma"
 import { DashboardShell } from "@/components/shell"
 import { DashboardHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
-import { PlusIcon } from "lucide-react"
+import { PlusIcon, Briefcase, CheckCircle, Clock } from "lucide-react"
 import { redirect } from "next/navigation"
 import { ProjectCard } from "@/components/dashboard/project-card"
 import { TaskList } from "@/components/dashboard/task-list"
+import { StatsCard } from "@/components/dashboard/stats-card"
+import { ActivityFeed } from "@/components/dashboard/activity-feed"
+import { CalendarView } from "@/components/dashboard/calendar-view"
 
 export const metadata: Metadata = {
   title: "Dashboard | CollabSpace",
@@ -120,24 +123,40 @@ async function getUpcomingTasks(userId: string) {
   })
 }
 
+async function getRecentActivities(userId: string) {
+  return await prisma.activity.findMany({
+    where: {
+      userId: userId,
+    },
+    include: {
+      user: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 5,
+  });
+}
+
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
-  
-  if (!session?.user?.id) {
-    redirect("/login")
+
+  if (!session) {
+    redirect("/auth")
   }
 
-  const [stats, recentProjects, upcomingTasks] = await Promise.all([
+  const [stats, recentProjects, upcomingTasks, activities] = await Promise.all([
     getProjectStats(session.user.id),
     getRecentProjects(session.user.id),
-    getUpcomingTasks(session.user.id)
+    getUpcomingTasks(session.user.id),
+    getRecentActivities(session.user.id),
   ])
 
   return (
     <DashboardShell>
       <DashboardHeader
         heading="Dashboard"
-        text={`Welcome back, ${session.user.name}`}
+        text="Welcome back! Here's an overview of your workspace."
       >
         <Button>
           <PlusIcon className="mr-2 h-4 w-4" />
@@ -145,63 +164,39 @@ export default async function DashboardPage() {
         </Button>
       </DashboardHeader>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Active Projects
-              </p>
-              <p className="text-2xl font-bold">{stats.activeProjects}</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Tasks Due Soon
-              </p>
-              <p className="text-2xl font-bold">{stats.dueTasks}</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Team Members
-              </p>
-              <p className="text-2xl font-bold">{stats.teamMembers}</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Completed Tasks
-              </p>
-              <p className="text-2xl font-bold">{stats.completedTasks}</p>
-            </div>
-          </div>
-        </div>
+        <StatsCard
+          title="Active Projects"
+          value={stats.activeProjects}
+          icon={<Briefcase className="h-4 w-4" />}
+        />
+        <StatsCard
+          title="Due Tasks"
+          value={stats.dueTasks}
+          description="Tasks due in next 24 hours"
+          icon={<Clock className="h-4 w-4" />}
+        />
+        <StatsCard
+          title="Completed Tasks"
+          value={stats.completedTasks}
+          icon={<CheckCircle className="h-4 w-4" />}
+        />
       </div>
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <div className="col-span-4">
-          <h2 className="text-2xl font-bold tracking-tight">Recent Projects</h2>
-          <div className="grid gap-4 mt-4">
+          <h2 className="mb-4 text-2xl font-bold">Recent Projects</h2>
+          <div className="grid gap-4 md:grid-cols-2">
             {recentProjects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>
         </div>
         <div className="col-span-3">
-          <h2 className="text-2xl font-bold tracking-tight">Upcoming Tasks</h2>
-          <div className="mt-4">
-            <TaskList tasks={upcomingTasks} />
-          </div>
+          <ActivityFeed activities={activities} />
         </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <TaskList tasks={upcomingTasks} />
+        <CalendarView tasks={upcomingTasks} />
       </div>
     </DashboardShell>
   )
