@@ -77,6 +77,24 @@ export async function createWorkspace(options: SeedWorkspaceOptions) {
         ],
       },
     },
+    include: {
+      roles: true,
+    },
+  });
+
+  // Create a member record for the owner with admin role
+  const adminRole = workspace.roles.find(role => role.name === 'Admin');
+  if (!adminRole) {
+    throw new Error('Admin role not found');
+  }
+
+  await prisma.workspaceMember.create({
+    data: {
+      workspaceId: workspace.id,
+      userId: ownerId,
+      roleId: adminRole.id,
+      status: 'active',
+    },
   });
 
   return workspace;
@@ -89,7 +107,7 @@ export async function seedWorkspaceWithMembers(options: SeedWorkspaceOptions) {
   const memberRole = await prisma.workspaceRole.findFirst({
     where: {
       workspaceId: workspace.id,
-      isDefault: true,
+      name: 'Member',
     },
   });
 
