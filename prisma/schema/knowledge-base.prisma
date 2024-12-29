@@ -1,0 +1,65 @@
+model Article {
+  id          String      @id @default(cuid())
+  title       String
+  content     String      @db.Text
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  authorId    String
+  categoryId  String
+  author      User        @relation(fields: [authorId], references: [id])
+  category    Category    @relation(fields: [categoryId], references: [id])
+  views       ArticleView[]
+  comments    Comment[]
+  favorites   Favorite[]
+
+  @@index([authorId])
+  @@index([categoryId])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  color       String
+  articles    Article[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ArticleView {
+  id          String    @id @default(cuid())
+  articleId   String
+  userId      String
+  viewedAt    DateTime  @default(now())
+  article     Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+  @@index([userId])
+}
+
+model Comment {
+  id          String    @id @default(cuid())
+  content     String
+  articleId   String
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  article     Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+  @@index([userId])
+}
+
+model Favorite {
+  id          String    @id @default(cuid())
+  articleId   String
+  userId      String
+  createdAt   DateTime  @default(now())
+  article     Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, userId])
+  @@index([articleId])
+  @@index([userId])
+}
