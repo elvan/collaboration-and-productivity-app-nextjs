@@ -1,13 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import { Project, Task } from '@prisma/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { BoardView } from '@/components/board/board-view'
+import { TaskBoard } from '@/components/projects/task-board'
 import { GanttChart } from '@/components/projects/gantt-chart'
 import { ProjectHeader } from '@/components/projects/project-header'
-import { useUpdateTask } from '@/hooks/use-update-task'
 import { 
   KanbanSquare, 
   BarChart2, 
@@ -25,24 +23,11 @@ export function ProjectView({ project, tasks }: ProjectViewProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const view = searchParams.get('view') || 'board'
-  const updateTask = useUpdateTask()
 
   const handleViewChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('view', value)
     router.push(`/projects/${project.id}?${params.toString()}`)
-  }
-
-  const handleTaskUpdate = async (updatedTask: Task) => {
-    try {
-      await updateTask.mutateAsync({
-        projectId: project.id,
-        taskId: updatedTask.id,
-        data: updatedTask
-      })
-    } catch (error) {
-      console.error('Failed to update task:', error)
-    }
   }
 
   return (
@@ -74,16 +59,18 @@ export function ProjectView({ project, tasks }: ProjectViewProps) {
         </TabsList>
 
         <TabsContent value="board" className="flex-1 border-none p-0">
-          <BoardView 
-            projectId={project.id} 
-            initialTasks={tasks} 
+          <TaskBoard 
+            project={project}
+            tasks={tasks}
           />
         </TabsContent>
 
         <TabsContent value="gantt" className="flex-1 border-none p-0">
           <GanttChart 
             tasks={tasks}
-            onTaskUpdate={handleTaskUpdate}
+            onTaskUpdate={async (updatedTask) => {
+              // Task updates are handled by the TaskBoard component
+            }}
           />
         </TabsContent>
 
@@ -104,7 +91,7 @@ export function ProjectView({ project, tasks }: ProjectViewProps) {
         <TabsContent value="settings" className="border-none p-0">
           {/* Settings component will be implemented next */}
           <div className="rounded-lg border bg-card p-4">
-            Project settings coming soon...
+            Settings view coming soon...
           </div>
         </TabsContent>
       </Tabs>

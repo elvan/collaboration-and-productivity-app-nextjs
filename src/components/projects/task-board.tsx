@@ -1,34 +1,65 @@
+'use client';
+
 import { Task, TaskStatus } from '@prisma/client';
-import { useUpdateTask } from '@/hooks/use-update-task';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { useUpdateTask } from '@/hooks/use-projects';
+import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import { TaskCard } from './task-card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Project } from '@/types/project';
+
+interface TaskWithRelations extends Task {
+  assignees?: {
+    user: {
+      id: string;
+      name: string | null;
+      image: string | null;
+    };
+  }[];
+  taskPriority?: {
+    name: string;
+    color: string;
+  };
+  taskStatus?: {
+    name: string;
+    color: string;
+  };
+  taskType?: {
+    name: string;
+    color: string;
+  };
+  labels?: {
+    name: string;
+    color: string;
+  }[];
+  customFields?: any[];
+  customValues?: any[];
+}
 
 interface TaskBoardProps {
   project: Project;
-  tasks: Task[];
+  tasks: TaskWithRelations[] | null;
   isLoading?: boolean;
 }
 
 const COLUMNS = [
-  { id: 'TODO', title: 'To Do' },
-  { id: 'IN_PROGRESS', title: 'In Progress' },
-  { id: 'IN_REVIEW', title: 'In Review' },
-  { id: 'DONE', title: 'Done' },
-] as const;
+  { id: 'TODO' as const, title: 'To Do' },
+  { id: 'IN_PROGRESS' as const, title: 'In Progress' },
+  { id: 'IN_REVIEW' as const, title: 'In Review' },
+  { id: 'DONE' as const, title: 'Done' },
+];
 
-export function TaskBoard({ project, tasks, isLoading }: TaskBoardProps) {
+export function TaskBoard({ project, tasks = [], isLoading }: TaskBoardProps) {
   const updateTask = useUpdateTask();
 
   const columns = COLUMNS.map(column => ({
     ...column,
-    tasks: tasks.filter(task => task.status === column.id)
+    tasks: (tasks || []).filter(task => task.status === column.id)
   }));
 
   const onDragEnd = async (result: any) => {
     const { source, destination, draggableId } = result;
 
-    if (!destination) return;
+    if (!destination || !tasks) return;
 
     const task = tasks.find(t => t.id === draggableId);
     if (!task) return;
@@ -76,23 +107,12 @@ export function TaskBoard({ project, tasks, isLoading }: TaskBoardProps) {
                 <div
                   ref={provided.innerRef}
                   {...provided.droppableProps}
-                  className={`space-y-2 rounded-lg border bg-muted/50 p-2 ${
+                  className={`space-y-2 rounded-lg border bg-muted/50 p-2 min-h-[150px] ${
                     snapshot.isDraggingOver ? 'ring-2 ring-primary' : ''
                   }`}
                 >
                   {column.tasks.map((task, index) => (
-                    <Draggable key={task.id} draggableId={task.id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className={snapshot.isDragging ? 'opacity-50' : ''}
-                        >
-                          <TaskCard task={task} index={index} />
-                        </div>
-                      )}
-                    </Draggable>
+                    <TaskCard key={task.id} task={task} index={index} />
                   ))}
                   {provided.placeholder}
                 </div>

@@ -1,13 +1,11 @@
-import { Metadata } from "next"
-import { getServerSession } from "next-auth"
-import { notFound, redirect } from "next/navigation"
-import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { DashboardShell } from "@/components/shell"
-import { DashboardHeader } from "@/components/header"
-import { ProjectTabs } from "@/components/projects/project-tabs"
-import { ProjectHeader } from "@/components/projects/project-header"
-import { Project } from "@/types/project"
+import { Metadata } from "next";
+import { getServerSession } from "next-auth";
+import { notFound, redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { ProjectTabs } from "@/components/projects/project-tabs";
+import { ProjectHeader } from "@/components/projects/project-header";
+import { Project } from "@/types/project";
 
 interface ProjectPageProps {
   params: {
@@ -143,11 +141,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     : (completedTasks / project.tasks.length) * 100
 
   return (
-    <DashboardShell>
+    <>
       <ProjectHeader project={project} progress={progress} />
       <div className="grid gap-8">
         <ProjectTabs project={project} />
       </div>
-    </DashboardShell>
+    </>
   )
 }

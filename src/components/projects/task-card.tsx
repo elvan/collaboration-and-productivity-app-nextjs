@@ -8,25 +8,37 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { CalendarIcon, Clock, Tag } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
+interface TaskWithRelations extends Task {
+  assignees?: {
+    user: {
+      id: string;
+      name: string | null;
+      image: string | null;
+    };
+  }[];
+  taskPriority?: {
+    name: string;
+    color: string;
+  };
+  taskStatus?: {
+    name: string;
+    color: string;
+  };
+  taskType?: {
+    name: string;
+    color: string;
+  };
+  labels?: {
+    name: string;
+    color: string;
+  }[];
+  customFields?: any[];
+  customValues?: any[];
+}
+
 interface TaskCardProps {
-  task: Task & {
-    assignees?: {
-      user: {
-        id: string
-        name: string | null
-        image: string | null
-      }
-    }[]
-    taskPriority?: {
-      name: string
-      color: string
-    }
-    labels?: {
-      name: string
-      color: string
-    }[]
-  }
-  index: number
+  task: TaskWithRelations;
+  index: number;
 }
 
 export function TaskCard({ task, index }: TaskCardProps) {
@@ -93,6 +105,18 @@ export function TaskCard({ task, index }: TaskCardProps) {
                     </span>
                   </div>
                 )}
+                {task.taskType && (
+                  <Badge
+                    variant="outline"
+                    style={{
+                      backgroundColor: task.taskType.color + '20',
+                      color: task.taskType.color,
+                    }}
+                    className="text-xs"
+                  >
+                    {task.taskType.name}
+                  </Badge>
+                )}
               </div>
               {task.assignees && task.assignees.length > 0 && (
                 <div className="flex -space-x-2">
@@ -101,10 +125,7 @@ export function TaskCard({ task, index }: TaskCardProps) {
                       key={assignee.user.id}
                       className="h-6 w-6 border-2 border-background"
                     >
-                      <AvatarImage
-                        src={assignee.user.image || ''}
-                        alt={assignee.user.name || ''}
-                      />
+                      <AvatarImage src={assignee.user.image || undefined} />
                       <AvatarFallback>
                         {assignee.user.name?.[0] || '?'}
                       </AvatarFallback>
@@ -117,5 +138,5 @@ export function TaskCard({ task, index }: TaskCardProps) {
         </Card>
       )}
     </Draggable>
-  )
+  );
 }

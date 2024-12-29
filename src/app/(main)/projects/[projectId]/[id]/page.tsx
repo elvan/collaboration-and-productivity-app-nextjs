@@ -1,7 +1,7 @@
-import { notFound } from 'next/navigation'
-import { getProject } from '@/lib/actions/projects'
-import { getProjectTasks } from '@/lib/actions/tasks'
-import { ProjectView } from '@/components/projects/project-view'
+import { notFound } from 'next/navigation';
+import { getProject } from '@/lib/actions/projects';
+import { getProjectTasks } from '@/lib/actions/tasks';
+import { ProjectView } from '@/components/projects/project-view';
 
 interface ProjectPageProps {
   params: {
@@ -18,7 +18,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   }
 
   return (
-    <ProjectView 
+    <ProjectView
       project={project}
       tasks={tasks}
     />
