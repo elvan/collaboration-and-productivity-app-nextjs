@@ -11,6 +11,7 @@ import { StatsCard } from "@/components/dashboard/stats-card"
 import { ActivityFeed } from "@/components/dashboard/activity-feed"
 import { CalendarView } from "@/components/dashboard/calendar-view"
 import { QuickActions } from "@/components/dashboard/quick-actions"
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: "Dashboard | CollabSpace",
@@ -57,16 +58,16 @@ async function getProjectStats(userId: string) {
       workspaces: {
         some: {
           workspace: {
-            members: {
+            workspaceMembers: {
               some: {
-                userId
-              }
-            }
-          }
-        }
-      }
-    }
-  })
+                userId,
+              },
+            },
+          },
+        },
+      },
+    },
+  });
 
   return {
     activeProjects,
@@ -242,7 +243,7 @@ export default async function DashboardPage() {
         {/* Quick Actions & Notifications */}
         <div className="space-y-6">
           <QuickActions notifications={notifications} />
-          
+
           <div className="rounded-lg border bg-card p-4">
             <h3 className="mb-4 text-lg font-semibold">Recent Notifications</h3>
             <div className="space-y-4">

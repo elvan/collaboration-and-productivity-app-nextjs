@@ -18,14 +18,14 @@ async function getWorkspace(slug: string, userId: string) {
       workspaceMembers: {
         some: {
           userId,
-          status: "active",
+          status: 'active',
         },
       },
     },
     include: {
       workspaceMembers: {
         where: {
-          status: "active",
+          status: 'active',
         },
         include: {
           user: {
@@ -36,31 +36,31 @@ async function getWorkspace(slug: string, userId: string) {
               image: true,
             },
           },
-          role: true,
+          workspaceRole: true,
         },
       },
       workspaceRoles: true,
       workspaceAnalytics: true,
       projects: {
         orderBy: {
-          position: "asc",
+          position: 'asc',
         },
       },
       projectFolders: {
         orderBy: {
-          position: "asc",
+          position: 'asc',
         },
         include: {
           projects: {
             orderBy: {
-              position: "asc",
+              position: 'asc',
             },
           },
           children: true,
         },
       },
     },
-  })
+  });
 
   if (!workspace) {
     notFound()
@@ -82,8 +82,8 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const workspace = await getWorkspace(params.workspaceSlug, session.user.id);
   const isAdmin = workspace.workspaceMembers.some(
     (member) =>
-      member.userId === session.user.id && member.role.name === "Admin"
-  )
+      member.userId === session.user.id && member.workspaceRole.name === 'Admin'
+  );
 
   return (
     <div className="container py-8">
