@@ -1,0 +1,27 @@
+model TemplateCategory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#94A3B8")
+  icon        String?  // Store icon name from lucide-react
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId   String
+  templates     FolderTemplate[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+// Update FolderTemplate model
+model FolderTemplate {
+  // ... existing fields
+  category      TemplateCategory? @relation(fields: [categoryId], references: [id])
+  categoryId    String?
+
+  @@index([categoryId])
+}
