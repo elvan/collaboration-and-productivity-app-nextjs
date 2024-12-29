@@ -55,6 +55,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import {
   ChevronRight,
@@ -64,6 +65,7 @@ import {
   Trash,
 } from "lucide-react"
 import { ProjectSearch } from "@/components/project/project-search"
+import { BulkOperations } from "@/components/project/bulk-operations"
 
 const createFolderSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -90,6 +92,11 @@ export function ProjectFolders({
   const [openFolders, setOpenFolders] = useState<string[]>([])
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [selectedParentId, setSelectedParentId] = useState<string | undefined>()
+  const [selectedItems, setSelectedItems] = useState<{
+    type: "folder" | "project"
+    id: string
+    name: string
+  }[]>([])
 
   const form = useForm<z.infer<typeof createFolderSchema>>({
     resolver: zodResolver(createFolderSchema),
@@ -210,11 +217,22 @@ export function ProjectFolders({
     )
   }
 
+  const toggleItemSelection = (type: "folder" | "project", id: string, name: string) => {
+    setSelectedItems((prev) => {
+      const exists = prev.find((item) => item.id === id)
+      if (exists) {
+        return prev.filter((item) => item.id !== id)
+      }
+      return [...prev, { type, id, name }]
+    })
+  }
+
   const renderFolder = (folder: ProjectFolder & {
     children: ProjectFolder[]
     projects: Project[]
   }) => {
     const isOpen = openFolders.includes(folder.id)
+    const isSelected = selectedItems.some((item) => item.id === folder.id)
 
     return (
       <Collapsible
@@ -224,18 +242,26 @@ export function ProjectFolders({
         className="space-y-2"
       >
         <div className="flex items-center justify-between">
-          <CollapsibleTrigger className="flex items-center gap-2 hover:bg-accent rounded-lg px-2 py-1">
-            <ChevronRight
-              className={cn("h-4 w-4 transition-transform", {
-                "transform rotate-90": isOpen,
-              })}
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() =>
+                toggleItemSelection("folder", folder.id, folder.name)
+              }
             />
-            <Folder className="h-4 w-4" />
-            <span className="font-medium">{folder.name}</span>
-            <Badge variant="secondary" className="ml-2">
-              {folder.projects.length}
-            </Badge>
-          </CollapsibleTrigger>
+            <CollapsibleTrigger className="flex items-center gap-2 hover:bg-accent rounded-lg px-2 py-1">
+              <ChevronRight
+                className={cn("h-4 w-4 transition-transform", {
+                  "transform rotate-90": isOpen,
+                })}
+              />
+              <Folder className="h-4 w-4" />
+              <span className="font-medium">{folder.name}</span>
+              <Badge variant="secondary" className="ml-2">
+                {folder.projects.length}
+              </Badge>
+            </CollapsibleTrigger>
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -270,36 +296,55 @@ export function ProjectFolders({
                   {...provided.droppableProps}
                   className="space-y-2"
                 >
-                  {folder.projects.map((project, index) => (
-                    <Draggable
-                      key={project.id}
-                      draggableId={project.id}
-                      index={index}
-                    >
-                      {(provided) => (
-                        <Link
-                          href={`/workspace/${workspaceId}/project/${project.id}/board`}
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className="block"
-                        >
-                          <Card>
-                            <CardHeader className="p-4">
-                              <CardTitle className="text-sm font-medium">
-                                {project.name}
-                              </CardTitle>
-                              {project.description && (
-                                <CardDescription className="text-xs">
-                                  {project.description}
-                                </CardDescription>
-                              )}
-                            </CardHeader>
-                          </Card>
-                        </Link>
-                      )}
-                    </Draggable>
-                  ))}
+                  {folder.projects.map((project, index) => {
+                    const isSelected = selectedItems.some(
+                      (item) => item.id === project.id
+                    )
+                    return (
+                      <Draggable
+                        key={project.id}
+                        draggableId={project.id}
+                        index={index}
+                      >
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className="flex items-center gap-2"
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() =>
+                                toggleItemSelection(
+                                  "project",
+                                  project.id,
+                                  project.name
+                                )
+                              }
+                            />
+                            <Link
+                              href={`/workspace/${workspaceId}/project/${project.id}/board`}
+                              className="block flex-1"
+                            >
+                              <Card>
+                                <CardHeader className="p-4">
+                                  <CardTitle className="text-sm font-medium">
+                                    {project.name}
+                                  </CardTitle>
+                                  {project.description && (
+                                    <CardDescription className="text-xs">
+                                      {project.description}
+                                    </CardDescription>
+                                  )}
+                                </CardHeader>
+                              </Card>
+                            </Link>
+                          </div>
+                        )}
+                      </Draggable>
+                    )
+                  })}
                   {provided.placeholder}
                 </div>
               )}
@@ -387,6 +432,13 @@ export function ProjectFolders({
         initialProjects={projects}
       />
 
+      <BulkOperations
+        workspaceId={workspaceId}
+        folders={folders}
+        selectedItems={selectedItems}
+        onDeselectAll={() => setSelectedItems([])}
+      />
+
       <div className="space-y-4">
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="root">
@@ -405,26 +457,42 @@ export function ProjectFolders({
                       index={index}
                     >
                       {(provided) => (
-                        <Link
-                          href={`/workspace/${workspaceId}/project/${project.id}/board`}
+                        <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="block"
+                          className="flex items-center gap-2"
                         >
-                          <Card>
-                            <CardHeader className="p-4">
-                              <CardTitle className="text-sm font-medium">
-                                {project.name}
-                              </CardTitle>
-                              {project.description && (
-                                <CardDescription className="text-xs">
-                                  {project.description}
-                                </CardDescription>
-                              )}
-                            </CardHeader>
-                          </Card>
-                        </Link>
+                          <Checkbox
+                            checked={selectedItems.some(
+                              (item) => item.id === project.id
+                            )}
+                            onCheckedChange={() =>
+                              toggleItemSelection(
+                                "project",
+                                project.id,
+                                project.name
+                              )
+                            }
+                          />
+                          <Link
+                            href={`/workspace/${workspaceId}/project/${project.id}/board`}
+                            className="block flex-1"
+                          >
+                            <Card>
+                              <CardHeader className="p-4">
+                                <CardTitle className="text-sm font-medium">
+                                  {project.name}
+                                </CardTitle>
+                                {project.description && (
+                                  <CardDescription className="text-xs">
+                                    {project.description}
+                                  </CardDescription>
+                                )}
+                              </CardHeader>
+                            </Card>
+                          </Link>
+                        </div>
                       )}
                     </Draggable>
                   ))}
