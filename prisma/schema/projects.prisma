@@ -8,12 +8,15 @@ model Project {
   status      ProjectStatus @default(ACTIVE)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  folderId    String?
+  position    Float         @default(0)
 
   // Relations
   workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   team      Team?           @relation(fields: [teamId], references: [id])
   owner     User            @relation("ProjectOwner", fields: [ownerId], references: [id])
   members   ProjectMember[]
+  folder    ProjectFolder?  @relation(fields: [folderId], references: [id])
 
   // Task Management
   tasks          Task[]
@@ -47,6 +50,7 @@ model Project {
   @@index([workspaceId])
   @@index([teamId])
   @@index([ownerId])
+  @@index([folderId])
 }
 
 model ProjectMember {
@@ -96,6 +100,27 @@ model PriorityRule {
 
   @@index([projectId])
   @@index([isActive])
+}
+
+model ProjectFolder {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  workspaceId String
+  parentId    String?
+  position    Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent    ProjectFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id])
+  children  ProjectFolder[] @relation("FolderHierarchy")
+  projects  Project[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@index([parentId])
 }
 
 enum ProjectStatus {

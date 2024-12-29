@@ -7,6 +7,7 @@ import { MembersTable } from "@/components/workspace/members-table"
 import { RolesTable } from "@/components/workspace/roles-table"
 import { InviteMemberDialog } from "@/components/workspace/invite-member-dialog"
 import { WorkspaceSettings } from "@/components/workspace/workspace-settings"
+import { ProjectFolders } from "@/components/project/project-folders"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 async function getWorkspace(slug: string, userId: string) {
@@ -39,6 +40,24 @@ async function getWorkspace(slug: string, userId: string) {
       },
       workspaceRoles: true,
       workspaceAnalytics: true,
+      projects: {
+        orderBy: {
+          position: "asc",
+        },
+      },
+      projectFolders: {
+        orderBy: {
+          position: "asc",
+        },
+        include: {
+          projects: {
+            orderBy: {
+              position: "asc",
+            },
+          },
+          children: true,
+        },
+      },
     },
   })
 
@@ -85,6 +104,7 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="projects">Projects</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           {isAdmin && (
             <>
@@ -96,6 +116,13 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
         <TabsContent value="overview" className="space-y-4">
           <WorkspaceAnalyticsComponent
             analytics={workspace.workspaceAnalytics}
+          />
+        </TabsContent>
+        <TabsContent value="projects">
+          <ProjectFolders
+            workspaceId={workspace.id}
+            folders={workspace.projectFolders}
+            projects={workspace.projects}
           />
         </TabsContent>
         <TabsContent value="members">

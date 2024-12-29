@@ -24,53 +24,53 @@ const updateWorkspaceSchema = z.object({
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { workspaceId: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const workspace = await prisma.workspace.findFirst({
       where: {
-        id: params.id,
+        id: params.workspaceId,
         workspaceMembers: {
           some: {
             userId: session.user.id,
             role: {
-              name: "Admin",
+              name: 'Admin',
             },
           },
         },
       },
-    })
+    });
 
     if (!workspace) {
-      return new NextResponse("Not found", { status: 404 })
+      return new NextResponse('Not found', { status: 404 });
     }
 
-    const json = await req.json()
-    const body = updateWorkspaceSchema.parse(json)
+    const json = await req.json();
+    const body = updateWorkspaceSchema.parse(json);
 
     const updatedWorkspace = await prisma.workspace.update({
       where: {
-        id: params.id,
+        id: params.workspaceId,
       },
       data: {
         name: body.name,
         description: body.description,
         settings: body.settings,
       },
-    })
+    });
 
-    return NextResponse.json(updatedWorkspace)
+    return NextResponse.json(updatedWorkspace);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return new NextResponse(JSON.stringify(error.errors), { status: 422 })
+      return new NextResponse(JSON.stringify(error.errors), { status: 422 });
     }
 
-    return new NextResponse(null, { status: 500 })
+    return new NextResponse(null, { status: 500 });
   }
 }
 

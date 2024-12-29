@@ -20,6 +20,7 @@ model Workspace {
   workspaceRoles     WorkspaceRole[]
   workflows          Workflow[]
   customFields       CustomField[]
+  projectFolders     ProjectFolder[]
 
   @@index([ownerId])
   @@index([slug])
@@ -60,9 +61,9 @@ model WorkspaceRole {
   // Relations
   workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   members   WorkspaceMember[]
-  Role      Role?             @relation(fields: [roleId], references: [id])
+  role      Role?             @relation(fields: [roleId], references: [id])
   roleId    String?
-  User      User?             @relation(fields: [userId], references: [id])
+  user      User?             @relation(fields: [userId], references: [id])
   userId    String?
 
   @@unique([workspaceId, name])
