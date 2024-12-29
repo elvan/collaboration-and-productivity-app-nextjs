@@ -17,7 +17,13 @@ async function getProjects(userId: string) {
     where: {
       OR: [
         { ownerId: userId },
-        { members: { some: { id: userId } } }
+        { 
+          members: { 
+            some: { 
+              userId: userId 
+            } 
+          } 
+        }
       ]
     },
     include: {
@@ -34,16 +40,31 @@ async function getProjects(userId: string) {
         }
       },
       tasks: {
-        select: {
-          id: true,
-          status: true
+        include: {
+          assignees: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true
+                }
+              }
+            }
+          },
+          taskStatus: true,
+          taskPriority: true
         }
       },
       members: {
-        select: {
-          id: true,
-          name: true,
-          image: true
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true
+            }
+          }
         }
       }
     },
@@ -55,9 +76,9 @@ async function getProjects(userId: string) {
 
 export default async function ProjectsPage() {
   const session = await getServerSession(authOptions)
-  
-  if (!session?.user?.id) {
-    redirect("/login")
+
+  if (!session) {
+    redirect("/auth")
   }
 
   const projects = await getProjects(session.user.id)
@@ -66,10 +87,9 @@ export default async function ProjectsPage() {
     <DashboardShell>
       <DashboardHeader
         heading="Projects"
-        text="Manage your projects and collaborate with team members."
-      >
-      </DashboardHeader>
-      <ProjectManagementDashboard projects={projects} userId={session.user.id} />
+        text="Manage your projects and collaborate with your team."
+      />
+      <ProjectManagementDashboard projects={projects} />
     </DashboardShell>
   )
 }
