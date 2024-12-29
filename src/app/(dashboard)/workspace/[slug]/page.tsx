@@ -8,6 +8,7 @@ import { RolesTable } from "@/components/workspace/roles-table"
 import { InviteMemberDialog } from "@/components/workspace/invite-member-dialog"
 import { WorkspaceSettings } from "@/components/workspace/workspace-settings"
 import { ProjectFolders } from "@/components/project/project-folders"
+import { CreateProjectDialog } from "@/components/project/create-project-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 async function getWorkspace(slug: string, userId: string) {
@@ -93,12 +94,19 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
           </h1>
           <p className="text-muted-foreground">{workspace.description}</p>
         </div>
-        {isAdmin && (
-          <InviteMemberDialog
+        <div className="flex gap-4">
+          <CreateProjectDialog
             workspaceId={workspace.id}
+            folders={workspace.projectFolders}
             workspaceRoles={workspace.workspaceRoles}
           />
-        )}
+          {isAdmin && (
+            <InviteMemberDialog
+              workspaceId={workspace.id}
+              workspaceRoles={workspace.workspaceRoles}
+            />
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
