@@ -138,8 +138,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const completedTasks = project.tasks.filter(
     (task) => task.status === "completed"
   ).length
-  const progress = project.tasks.length === 0 
-    ? 0 
+  const progress = project.tasks.length === 0
+    ? 0
     : (completedTasks / project.tasks.length) * 100
 
   return (
