@@ -1,0 +1,18 @@
+model FolderTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  structure   Json // Stores the folder structure as a nested JSON object
+  isGlobal    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdById String
+
+  @@index([workspaceId])
+  @@index([createdById])
+}
