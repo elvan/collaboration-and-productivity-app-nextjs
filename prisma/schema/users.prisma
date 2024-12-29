@@ -82,38 +82,46 @@ model User {
   bulkActions                 BulkAction[]
   notificationTemplateVersion NotificationTemplateVersion[]
 
-  abTest                   ABTest[]
-  abTestEvent              ABTestEvent[]
-  UserSecurity             UserSecurity?
-  UserActivity             UserActivity[]
-  UserDevice               UserDevice[]
-  profile                  UserProfile?
-  SkillEndorsement         SkillEndorsement[]
-  ExpertiseEndorsement     ExpertiseEndorsement[]
-  MentorshipTestimonial    MentorshipTestimonial[]
-  ArticleContributor       ArticleContributor[]
-  ArticleFeedback          ArticleFeedback[]
-  KnowledgeCollaborator    KnowledgeCollaborator[]
-  ArticleRevision          ArticleRevision[]          @relation("RevisionAuthor")
-  ReviewedRevisions        ArticleRevision[]          @relation("RevisionReviewer")
-  CollaborationParticipant CollaborationParticipant[]
-  ArticleComment           ArticleComment[]
-  ArticleCommentReaction   ArticleCommentReaction[]
-  Annotation               Annotation[]
-  AnnotationReaction       AnnotationReaction[]
-  TaskComment              TaskComment[]
-  TaskAssignee             TaskAssignee[]
-  WorkspaceActivity        WorkspaceActivity[]
+  abTestEvents ABTestEvent[]
+  abTests      ABTest[]
 
-  folderTemplateVersionCommentReaction FolderTemplateVersionCommentReaction[]
+  annotationReactions AnnotationReaction[]
+  annotations         Annotation[]
+
+  articleCommentReactions ArticleCommentReaction[]
+  articleComments         ArticleComment[]
+  articleContributors     ArticleContributor[]
+  articleFeedbacks        ArticleFeedback[]
+  articleRevisions        ArticleRevision[]        @relation("RevisionAuthor")
+
+  collaborationParticipants CollaborationParticipant[]
+
+  expertiseEndorsements ExpertiseEndorsement[]
+
+  folderShares                         FolderShare[]
+  folderTemplateBranchMerges           FolderTemplateBranchMerge[]
+  folderTemplateBranches               FolderTemplateBranch[]
   folderTemplateVersionCommentMentions FolderTemplateVersionComment[]         @relation("CommentMentions")
+  folderTemplateVersionCommentReaction FolderTemplateVersionCommentReaction[]
   folderTemplateVersionCommentReplies  FolderTemplateVersionComment[]         @relation("CommentReplies")
-  folderTemplate                       FolderTemplate[]
-  folderTemplateBranch                 FolderTemplateBranch[]
-  folderTemplateBranchMerge            FolderTemplateBranchMerge[]
-  folderTemplateVersion                FolderTemplateVersion[]
-  folderShare                          FolderShare[]
-  folderTemplateVersionComment         FolderTemplateVersionComment[]
+  folderTemplateVersionComments        FolderTemplateVersionComment[]
+  folderTemplateVersions               FolderTemplateVersion[]
+  folderTemplates                      FolderTemplate[]
+
+  knowledgeCollaborators KnowledgeCollaborator[]
+  mentorshipTestimonials MentorshipTestimonial[]
+  reviewedRevisions      ArticleRevision[]       @relation("RevisionReviewer")
+  skillEndorsements      SkillEndorsement[]
+
+  taskAssignees TaskAssignee[]
+  taskComments  TaskComment[]
+
+  userActivities UserActivity[]
+  userDevices    UserDevice[]
+  userProfile    UserProfile?
+  userSecurity   UserSecurity?
+
+  workspaceActivities WorkspaceActivity[]
 
   @@index([email])
 }
