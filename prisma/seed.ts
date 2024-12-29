@@ -1,7 +1,7 @@
 import { PrismaClient, PermissionAction, PermissionResource, UserStatus } from '@prisma/client';
 import { hash } from 'bcryptjs';
 import { SystemRole } from '../src/types/roles';
-import { seedDemoProjects } from './seeders';
+import { seedDemoProjects } from './seeders/project.seeder';
 
 const prisma = new PrismaClient();
 
@@ -135,7 +135,7 @@ async function main() {
 
   // Seed demo projects
   console.log('Creating demo projects...');
-  const demoProjects = await seedDemoProjects(workspace.id, adminUser.id);
+  const demoProjects = await seedDemoProjects(workspace.id, adminUser.id, team.id);
 
   console.log('✅ Database seeding completed!');
 

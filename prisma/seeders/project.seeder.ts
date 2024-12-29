@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { PrismaClient, ProjectStatus, TaskStatusEnum } from '@prisma/client';
+import { hash } from 'bcryptjs';
 const prisma = new PrismaClient();
 
 interface SeedProjectOptions {
@@ -17,9 +18,9 @@ export async function createProject(options: SeedProjectOptions) {
       name: faker.company.catchPhrase(),
       description: faker.company.buzzPhrase(),
       workspaceId,
-      teamId,
       ownerId,
       status: faker.helpers.arrayElement(Object.values(ProjectStatus)),
+      ...(teamId ? { teamId } : {}), // Only include teamId if provided
     },
   });
 
@@ -265,72 +266,56 @@ export async function createProject(options: SeedProjectOptions) {
 
 export async function seedProjectWithMembers(options: SeedProjectOptions) {
   const projectData = await createProject(options);
-  const { project } = projectData;
 
-  // Create some project members
+  // Create demo users for project members
+  const demoUsers = await Promise.all(
+    Array(4).fill(0).map(async () => {
+      const password = await hash('password123', 12);
+      return prisma.user.create({
+        data: {
+          name: faker.person.fullName(),
+          email: faker.internet.email(),
+          password: password,
+          status: 'ACTIVE',
+        },
+      });
+    })
+  );
+
+  // Create project members with different roles
   const memberRoles = ['admin', 'member', 'member', 'member'];
   const members = await Promise.all(
-    memberRoles.map((role) =>
+    memberRoles.map((role, index) =>
       prisma.projectMember.create({
         data: {
-          projectId: project.id,
-          userId: faker.string.uuid(), // Assuming we have users
+          projectId: projectData.project.id,
+          userId: demoUsers[index].id,
           role,
         },
       })
     )
   );
 
-  // Create some pending invitations
-  const invitations = await Promise.all(
-    Array(2)
-      .fill(0)
-      .map(() =>
-        prisma.projectInvitation.create({
-          data: {
-            projectId: project.id,
-            invitedById: options.ownerId,
-            invitedUserId: faker.string.uuid(), // Assuming we have users
-            status: 'pending',
-          },
-        })
-      )
-  );
-
   return {
     ...projectData,
     members,
-    invitations,
   };
 }
 
-export async function seedDemoProjects(workspaceId: string, ownerId: string) {
-  // Create a software development project
-  const softwareProject = await seedProjectWithMembers({
-    workspaceId,
-    ownerId,
-    teamId: faker.string.uuid(), // Assuming we have teams
-  });
+export async function seedDemoProjects(workspaceId: string, ownerId: string, teamId?: string) {
+  // Create multiple demo projects
+  const projects = await Promise.all([
+    seedProjectWithMembers({
+      workspaceId,
+      ownerId,
+      teamId,
+    }),
+    seedProjectWithMembers({
+      workspaceId,
+      ownerId,
+      teamId,
+    }),
+  ]);
 
-  // Create a marketing campaign project
-  const marketingProject = await seedProjectWithMembers({
-    workspaceId,
-    ownerId,
-  });
-
-  // Create an archived project
-  const archivedProject = await createProject({
-    workspaceId,
-    ownerId,
-  });
-  await prisma.project.update({
-    where: { id: archivedProject.project.id },
-    data: { status: 'ARCHIVED' },
-  });
-
-  return {
-    softwareProject,
-    marketingProject,
-    archivedProject,
-  };
+  return projects;
 }

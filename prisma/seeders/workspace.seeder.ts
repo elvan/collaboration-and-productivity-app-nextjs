@@ -55,51 +55,73 @@ export async function createWorkspace(options: SeedWorkspaceOptions) {
     },
   });
 
-  return workspace;
-}
-
-export async function seedWorkspaceWithMembers(options: SeedWorkspaceOptions) {
-  const workspace = await createWorkspace(options);
-
-  // Create workspace roles
-  const roles = await Promise.all([
-    prisma.workspaceRole.create({
+  // Create base roles first
+  const baseRoles = await Promise.all([
+    prisma.role.create({
       data: {
         name: 'Admin',
         description: 'Full workspace access',
-        workspaceId: workspace.id,
-        permissions: ['MANAGE_WORKSPACE', 'MANAGE_MEMBERS', 'MANAGE_PROJECTS'],
-      },
+        permissions: {
+          create: [
+            { action: 'MANAGE', resource: 'WORKSPACE' },
+            { action: 'MANAGE', resource: 'USERS' },
+            { action: 'MANAGE', resource: 'PROJECTS' }
+          ]
+        }
+      }
     }),
-    prisma.workspaceRole.create({
+    prisma.role.create({
       data: {
         name: 'Manager',
         description: 'Can manage projects and teams',
-        workspaceId: workspace.id,
-        permissions: ['MANAGE_PROJECTS', 'MANAGE_TEAMS'],
-      },
+        permissions: {
+          create: [
+            { action: 'MANAGE', resource: 'PROJECTS' },
+            { action: 'MANAGE', resource: 'TEAMS' }
+          ]
+        }
+      }
     }),
-    prisma.workspaceRole.create({
+    prisma.role.create({
       data: {
         name: 'Member',
         description: 'Regular workspace member',
-        workspaceId: workspace.id,
-        permissions: ['VIEW_WORKSPACE', 'CREATE_PROJECTS'],
-      },
-    }),
+        permissions: {
+          create: [
+            { action: 'READ', resource: 'WORKSPACE' },
+            { action: 'CREATE', resource: 'PROJECTS' }
+          ]
+        }
+      }
+    })
   ]);
+
+  // Create workspace roles linking to base roles
+  const workspaceRoles = await Promise.all(
+    baseRoles.map(role => 
+      prisma.workspaceRole.create({
+        data: {
+          workspaceId: workspace.id,
+          roleId: role.id,
+          userId: options.ownerId, // Initially assign to workspace owner
+        }
+      })
+    )
+  );
 
   // Create workspace members with different roles
   const members = await Promise.all(
     Array(5)
       .fill(0)
       .map(async (_, index) => {
-        const role = roles[index % roles.length];
+        const userId = faker.string.uuid(); // Assuming we have users
+        const workspaceRole = workspaceRoles[index % workspaceRoles.length];
+        
         return prisma.workspaceMember.create({
           data: {
             workspaceId: workspace.id,
-            userId: faker.string.uuid(), // Assuming we have users
-            roleId: role.id,
+            userId: userId,
+            roleId: workspaceRole.id,
           },
         });
       })
@@ -107,7 +129,17 @@ export async function seedWorkspaceWithMembers(options: SeedWorkspaceOptions) {
 
   return {
     workspace,
-    roles,
+    workspaceRoles,
+    members,
+  };
+}
+
+export async function seedWorkspaceWithMembers(options: SeedWorkspaceOptions) {
+  const { workspace, workspaceRoles, members } = await createWorkspace(options);
+
+  return {
+    workspace,
+    workspaceRoles,
     members,
   };
 }
@@ -128,7 +160,6 @@ export async function seedDemoWorkspaces(ownerId: string) {
       name: 'Personal Workspace',
       description: 'Your personal workspace for individual projects',
       settings: {
-        ...personalWorkspace.settings,
         features: {
           timeTracking: false,
           sprints: false,
