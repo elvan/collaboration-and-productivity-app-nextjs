@@ -55,8 +55,10 @@ async function main() {
 
   // Create demo workspaces using the workspace seeder
   console.log('Creating demo workspaces...');
-  const { workspace: mainWorkspace, workspaceRoles } = await seedWorkspaceWithMembers({
+  const mainWorkspace = await seedWorkspaceWithMembers({
     ownerId: adminUser.id,
+    name: 'Main Workspace',
+    description: 'Primary workspace for the organization',
   });
 
   // Create additional demo workspaces

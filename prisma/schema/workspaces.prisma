@@ -12,14 +12,14 @@ model Workspace {
   theme       Json?    @default("{}")
 
   // Relations
-  owner         User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
-  members       WorkspaceMember[]
-  teams         Team[]
-  projects      Project[]
-  analytics     WorkspaceAnalytics?
-  WorkspaceRole WorkspaceRole[]
-  Workflow      Workflow[]
-  CustomField   CustomField[]
+  owner       User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  members     WorkspaceMember[]
+  teams       Team[]
+  projects    Project[]
+  analytics   WorkspaceAnalytics?
+  roles       WorkspaceRole[]
+  Workflow    Workflow[]
+  CustomField CustomField[]
 
   @@index([ownerId])
   @@index([slug])
@@ -60,16 +60,13 @@ model WorkspaceRole {
   // Relations
   workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   members   WorkspaceMember[]
-  roleId    String
-  userId    String
-  role      Role              @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Role      Role?             @relation(fields: [roleId], references: [id])
+  roleId    String?
+  User      User?             @relation(fields: [userId], references: [id])
+  userId    String?
 
   @@unique([workspaceId, name])
-  @@unique([workspaceId, userId, roleId])
   @@index([workspaceId])
-  @@index([roleId])
-  @@index([userId])
 }
 
 model WorkspaceAnalytics {
