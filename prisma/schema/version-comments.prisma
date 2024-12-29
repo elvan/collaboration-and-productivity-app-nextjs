@@ -1,0 +1,33 @@
+model VersionComment {
+  id          String         @id @default(cuid())
+  content     String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  version     TemplateVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  versionId   String
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdById String
+  parent      VersionComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parentId    String?
+  replies     VersionComment[] @relation("CommentReplies")
+  mentions    User[]         @relation("CommentMentions")
+  reactions   CommentReaction[]
+
+  @@index([versionId])
+  @@index([createdById])
+  @@index([parentId])
+}
+
+model CommentReaction {
+  id          String         @id @default(cuid())
+  emoji       String
+  createdAt   DateTime       @default(now())
+  comment     VersionComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId   String
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdById String
+
+  @@unique([commentId, createdById, emoji])
+  @@index([commentId])
+  @@index([createdById])
+}
