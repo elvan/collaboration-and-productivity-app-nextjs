@@ -2,9 +2,16 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from "@hello-pangea/dnd"
 import { Project, ProjectFolder } from "@prisma/client"
 import { useToast } from "@/components/ui/use-toast"
 import {
@@ -29,13 +36,6 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Card,
   CardContent,
   CardDescription,
@@ -43,13 +43,28 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-} from "@hello-pangea/dnd"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import {
+  ChevronRight,
+  Folder,
+  MoreHorizontal,
+  Plus,
+  Trash,
+} from "lucide-react"
 
-const formSchema = z.object({
+const createFolderSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   parentId: z.string().optional(),
@@ -58,8 +73,8 @@ const formSchema = z.object({
 interface ProjectFoldersProps {
   workspaceId: string
   folders: (ProjectFolder & {
-    projects: Project[]
     children: ProjectFolder[]
+    projects: Project[]
   })[]
   projects: Project[]
 }
@@ -71,11 +86,12 @@ export function ProjectFolders({
 }: ProjectFoldersProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [openFolders, setOpenFolders] = useState<string[]>([])
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [selectedParentId, setSelectedParentId] = useState<string | undefined>()
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof createFolderSchema>>({
+    resolver: zodResolver(createFolderSchema),
     defaultValues: {
       name: "",
       description: "",
@@ -83,16 +99,21 @@ export function ProjectFolders({
     },
   })
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof createFolderSchema>) {
     try {
-      setLoading(true)
-      const response = await fetch(`/api/workspaces/${workspaceId}/folders`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      })
+      const response = await fetch(
+        `/api/workspaces/${workspaceId}/project-folders`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...values,
+            parentId: selectedParentId,
+          }),
+        }
+      )
 
       if (!response.ok) {
         throw new Error("Failed to create folder")
@@ -102,7 +123,7 @@ export function ProjectFolders({
         title: "Success",
         description: "Folder created successfully",
       })
-      setOpen(false)
+      setCreateDialogOpen(false)
       form.reset()
       router.refresh()
     } catch (error) {
@@ -111,31 +132,57 @@ export function ProjectFolders({
         description: "Failed to create folder",
         variant: "destructive",
       })
-    } finally {
-      setLoading(false)
+    }
+  }
+
+  async function onDelete(folderId: string) {
+    try {
+      const response = await fetch(
+        `/api/workspaces/${workspaceId}/project-folders/${folderId}`,
+        {
+          method: "DELETE",
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error("Failed to delete folder")
+      }
+
+      toast({
+        title: "Success",
+        description: "Folder deleted successfully",
+      })
+      router.refresh()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete folder",
+        variant: "destructive",
+      })
     }
   }
 
   async function onDragEnd(result: DropResult) {
     if (!result.destination) return
 
-    const { source, destination, draggableId, type } = result
+    const sourceId = result.draggableId
+    const destinationId = result.destination.droppableId
+    const sourceIndex = result.source.index
+    const destinationIndex = result.destination.index
 
     try {
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/folders/reorder`,
+        `/api/workspaces/${workspaceId}/project-folders/reorder`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            type,
-            itemId: draggableId,
-            sourceIndex: source.index,
-            destinationIndex: destination.index,
-            sourceFolderId: source.droppableId,
-            destinationFolderId: destination.droppableId,
+            sourceId,
+            destinationId,
+            sourceIndex,
+            destinationIndex,
           }),
         }
       )
@@ -154,13 +201,125 @@ export function ProjectFolders({
     }
   }
 
+  const toggleFolder = (folderId: string) => {
+    setOpenFolders((prev) =>
+      prev.includes(folderId)
+        ? prev.filter((id) => id !== folderId)
+        : [...prev, folderId]
+    )
+  }
+
+  const renderFolder = (folder: ProjectFolder & {
+    children: ProjectFolder[]
+    projects: Project[]
+  }) => {
+    const isOpen = openFolders.includes(folder.id)
+
+    return (
+      <Collapsible
+        key={folder.id}
+        open={isOpen}
+        onOpenChange={() => toggleFolder(folder.id)}
+        className="space-y-2"
+      >
+        <div className="flex items-center justify-between">
+          <CollapsibleTrigger className="flex items-center gap-2 hover:bg-accent rounded-lg px-2 py-1">
+            <ChevronRight
+              className={cn("h-4 w-4 transition-transform", {
+                "transform rotate-90": isOpen,
+              })}
+            />
+            <Folder className="h-4 w-4" />
+            <span className="font-medium">{folder.name}</span>
+            <Badge variant="secondary" className="ml-2">
+              {folder.projects.length}
+            </Badge>
+          </CollapsibleTrigger>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedParentId(folder.id)
+                  setCreateDialogOpen(true)
+                }}
+              >
+                Create subfolder
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onDelete(folder.id)}
+                className="text-destructive"
+              >
+                Delete folder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <CollapsibleContent className="pl-6 space-y-2">
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId={folder.id}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="space-y-2"
+                >
+                  {folder.projects.map((project, index) => (
+                    <Draggable
+                      key={project.id}
+                      draggableId={project.id}
+                      index={index}
+                    >
+                      {(provided) => (
+                        <Link
+                          href={`/workspace/${workspaceId}/project/${project.id}/board`}
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className="block"
+                        >
+                          <Card>
+                            <CardHeader className="p-4">
+                              <CardTitle className="text-sm font-medium">
+                                {project.name}
+                              </CardTitle>
+                              {project.description && (
+                                <CardDescription className="text-xs">
+                                  {project.description}
+                                </CardDescription>
+                              )}
+                            </CardHeader>
+                          </Card>
+                        </Link>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+          {folder.children.map((child) => renderFolder(child))}
+        </CollapsibleContent>
+      </Collapsible>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Project Folders</h2>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <h2 className="text-2xl font-bold tracking-tight">Projects</h2>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button>Create Folder</Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              New Folder
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -170,7 +329,10 @@ export function ProjectFolders({
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="name"
@@ -184,6 +346,7 @@ export function ProjectFolders({
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
                   name="description"
@@ -191,50 +354,22 @@ export function ProjectFolders({
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Folder description" {...field} />
+                        <Textarea
+                          placeholder="Folder description"
+                          {...field}
+                          rows={3}
+                        />
                       </FormControl>
                       <FormDescription>
-                        Optional description for this folder
+                        Optional description for your folder
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="parentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Parent Folder</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a parent folder" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="">No parent folder</SelectItem>
-                          {folders.map((folder) => (
-                            <SelectItem key={folder.id} value={folder.id}>
-                              {folder.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Optional parent folder for nesting
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
                 <DialogFooter>
-                  <Button type="submit" loading={loading}>
-                    Create Folder
-                  </Button>
+                  <Button type="submit">Create Folder</Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -242,81 +377,44 @@ export function ProjectFolders({
         </Dialog>
       </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="space-y-4">
-          <Droppable droppableId="root" type="FOLDER">
+      <div className="space-y-4">
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="root">
             {(provided) => (
               <div
-                {...provided.droppableProps}
                 ref={provided.innerRef}
-                className="space-y-4"
+                {...provided.droppableProps}
+                className="space-y-2"
               >
-                {folders
-                  .filter((folder) => !folder.parentId)
-                  .map((folder, index) => (
+                {projects
+                  .filter((project) => !project.folderId)
+                  .map((project, index) => (
                     <Draggable
-                      key={folder.id}
-                      draggableId={folder.id}
+                      key={project.id}
+                      draggableId={project.id}
                       index={index}
                     >
                       {(provided) => (
-                        <div
+                        <Link
+                          href={`/workspace/${workspaceId}/project/${project.id}/board`}
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
+                          className="block"
                         >
                           <Card>
-                            <CardHeader>
-                              <CardTitle>{folder.name}</CardTitle>
-                              {folder.description && (
-                                <CardDescription>
-                                  {folder.description}
+                            <CardHeader className="p-4">
+                              <CardTitle className="text-sm font-medium">
+                                {project.name}
+                              </CardTitle>
+                              {project.description && (
+                                <CardDescription className="text-xs">
+                                  {project.description}
                                 </CardDescription>
                               )}
                             </CardHeader>
-                            <CardContent>
-                              <Droppable
-                                droppableId={folder.id}
-                                type="PROJECT"
-                              >
-                                {(provided) => (
-                                  <div
-                                    {...provided.droppableProps}
-                                    ref={provided.innerRef}
-                                    className="space-y-2"
-                                  >
-                                    {folder.projects.map((project, index) => (
-                                      <Draggable
-                                        key={project.id}
-                                        draggableId={project.id}
-                                        index={index}
-                                      >
-                                        {(provided) => (
-                                          <div
-                                            ref={provided.innerRef}
-                                            {...provided.draggableProps}
-                                            {...provided.dragHandleProps}
-                                            className="p-4 bg-muted rounded-lg"
-                                          >
-                                            <div className="font-medium">
-                                              {project.name}
-                                            </div>
-                                            {project.description && (
-                                              <div className="text-sm text-muted-foreground">
-                                                {project.description}
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-                                      </Draggable>
-                                    ))}
-                                    {provided.placeholder}
-                                  </div>
-                                )}
-                              </Droppable>
-                            </CardContent>
                           </Card>
-                        </div>
+                        </Link>
                       )}
                     </Draggable>
                   ))}
@@ -324,52 +422,10 @@ export function ProjectFolders({
               </div>
             )}
           </Droppable>
+        </DragDropContext>
 
-          <Droppable droppableId="unorganized" type="PROJECT">
-            {(provided) => (
-              <div {...provided.droppableProps} ref={provided.innerRef}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Unorganized Projects</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {projects
-                        .filter((project) => !project.folderId)
-                        .map((project, index) => (
-                          <Draggable
-                            key={project.id}
-                            draggableId={project.id}
-                            index={index}
-                          >
-                            {(provided) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className="p-4 bg-muted rounded-lg"
-                              >
-                                <div className="font-medium">
-                                  {project.name}
-                                </div>
-                                {project.description && (
-                                  <div className="text-sm text-muted-foreground">
-                                    {project.description}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                    </div>
-                    {provided.placeholder}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </Droppable>
-        </div>
-      </DragDropContext>
+        {folders.map((folder) => renderFolder(folder))}
+      </div>
     </div>
   )
 }
