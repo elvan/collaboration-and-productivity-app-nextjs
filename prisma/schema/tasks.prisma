@@ -1,27 +1,36 @@
 model Task {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  status      String    @default("todo")
-  priority    String    @default("medium")
-  dueDate     DateTime?
-  projectId   String
-  assigneeId  String?
-  createdById String
-  parentId    String?
-  listId      String?
-  typeId      String?
-  statusId    String?
-  priorityId  String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  title        String
+  description  String?   @db.Text
+  status       String    @default("todo")
+  priority     String    @default("medium")
+  dueDate      DateTime?
+  startDate    DateTime?
+  timeEstimate Int? // In minutes
+  timeSpent    Int? // In minutes
+  projectId    String
+  sprintId     String?
+  createdById  String
+  parentId     String?
+  listId       String?
+  typeId       String?
+  statusId     String?
+  priorityId   String?
+  points       Float? // Story points
+  archived     Boolean   @default(false)
+  position     Float // For ordering within lists
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
+  // Relations
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   parent    Task?   @relation("TaskDependencies", fields: [parentId], references: [id])
   children  Task[]  @relation("TaskDependencies")
-  assignee  User?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
   createdBy User    @relation("TaskCreator", fields: [createdById], references: [id])
+  sprint    Sprint? @relation(fields: [sprintId], references: [id])
 
+  // Many-to-many relations
+  assignees    TaskAssignee[]
   labels       Label[]
   customFields CustomField[]
   customValues CustomFieldValue[]
@@ -33,9 +42,13 @@ model Task {
   taskPriority TaskPriority?       @relation(fields: [priorityId], references: [id])
   taskTags     TaskTagAssignment[]
 
+  // Dependencies
   dependentOn  TaskDependency[] @relation("DependentTasks")
   dependedOnBy TaskDependency[] @relation("BlockingTasks")
+  blockedBy    TaskBlocker[]    @relation("BlockedTasks")
+  blocking     TaskBlocker[]    @relation("BlockingTasks")
 
+  // Activity tracking
   activities   Activity[]
   comments     TaskComment[]
   timeEntries  TimeEntry[]
@@ -43,18 +56,71 @@ model Task {
   attachments  Attachment[]
   timeTracking TimeTracking[] @relation("TaskTimeTracking")
 
+  // Notifications
   notifications Notification[]
   emailLogs     EmailLog[]
   taskListItems TaskListItem[]
+  User          User[]         @relation("TaskAssignee")
 
   @@index([projectId])
-  @@index([assigneeId])
+  @@index([sprintId])
   @@index([createdById])
   @@index([parentId])
   @@index([listId])
   @@index([typeId])
   @@index([statusId])
   @@index([priorityId])
+  @@index([position])
+}
+
+// New model for multiple assignees
+model TaskAssignee {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  role      String? // Optional role for the assignee
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+}
+
+// New model for sprints/iterations
+model Sprint {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("PLANNED") // PLANNED, ACTIVE, COMPLETED
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+}
+
+// Enhanced task dependencies
+model TaskBlocker {
+  id            String   @id @default(cuid())
+  blockedTaskId String
+  blockerTaskId String
+  type          String // BLOCKS, BLOCKED_BY
+  description   String?
+  resolved      Boolean  @default(false)
+  blockedTask   Task     @relation("BlockedTasks", fields: [blockedTaskId], references: [id], onDelete: Cascade)
+  blockerTask   Task     @relation("BlockingTasks", fields: [blockerTaskId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([blockedTaskId, blockerTaskId])
+  @@index([blockedTaskId])
+  @@index([blockerTaskId])
 }
 
 model TaskList {

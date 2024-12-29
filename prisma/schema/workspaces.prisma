@@ -14,6 +14,8 @@ model Workspace {
   projects      Project[]
   analytics     WorkspaceAnalytics?
   WorkspaceRole WorkspaceRole[]
+  Workflow      Workflow[]
+  CustomField   CustomField[]
 
   @@index([ownerId])
 }

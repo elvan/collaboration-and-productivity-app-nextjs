@@ -1,19 +1,30 @@
 model Workflow {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
   description String?
-  projectId   String
-  isActive    Boolean  @default(true)
-  steps       Json // Array of workflow steps
-  triggers    Json // Workflow triggers
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  projectId   String?
+  workspaceId String?
 
-  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  automations WorkflowAutomation[]
+  // Relations
+  project   Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspace Workspace?        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  triggers  WorkflowTrigger[]
+  actions   WorkflowAction[]
 
-  @@index([projectId])
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  isActive Boolean @default(true)
+  steps    Json // Array of workflow steps
+
+  automations       WorkflowAutomation[]
+  workflowExecution WorkflowExecution[]
+  workflowSchedule  WorkflowSchedule[]
+
   @@index([isActive])
+  @@index([projectId])
+  @@index([workspaceId])
 }
 
 model WorkflowAutomation {
@@ -72,4 +83,98 @@ enum BulkActionStatus {
 enum WebhookStatus {
   SUCCESS
   FAILED
+}
+
+enum TriggerType {
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_COMPLETED
+  TASK_DELETED
+  DUE_DATE_APPROACHING
+  COMMENT_ADDED
+  STATUS_CHANGED
+  ASSIGNEE_CHANGED
+  CUSTOM_FIELD_CHANGED
+  TIME_TRACKED
+  ATTACHMENT_ADDED
+  SUBTASK_COMPLETED
+  CHECKLIST_COMPLETED
+}
+
+enum ActionType {
+  UPDATE_TASK
+  CREATE_TASK
+  ASSIGN_TASK
+  SEND_EMAIL
+  SEND_NOTIFICATION
+  ADD_COMMENT
+  UPDATE_CUSTOM_FIELD
+  CREATE_SUBTASK
+  MOVE_TASK
+  COPY_TASK
+  TAG_TASK
+  WEBHOOK
+  API_REQUEST
+}
+
+model WorkflowTrigger {
+  id         String      @id @default(cuid())
+  type       TriggerType
+  conditions Json // Conditions that must be met
+  workflowId String
+  workflow   Workflow    @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([workflowId])
+  @@index([type])
+}
+
+model WorkflowAction {
+  id         String     @id @default(cuid())
+  type       ActionType
+  config     Json // Configuration for the action
+  order      Int // Order of execution
+  workflowId String
+  workflow   Workflow   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([workflowId])
+  @@index([type])
+}
+
+model WorkflowExecution {
+  id          String    @id @default(cuid())
+  workflowId  String
+  triggerId   String
+  status      String // PENDING, RUNNING, COMPLETED, FAILED
+  error       String?
+  result      Json?
+  startedAt   DateTime
+  completedAt DateTime?
+  workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workflowId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model WorkflowSchedule {
+  id         String    @id @default(cuid())
+  workflowId String
+  cron       String // Cron expression for scheduling
+  timezone   String // Timezone for the schedule
+  active     Boolean   @default(true)
+  lastRun    DateTime?
+  nextRun    DateTime?
+  workflow   Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([workflowId])
+  @@index([active])
+  @@index([nextRun])
 }

@@ -42,6 +42,7 @@ model Project {
 
   // Integrations
   integrations Integration[]
+  Sprint       Sprint[]
 
   @@index([workspaceId])
   @@index([teamId])

@@ -1,27 +1,64 @@
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  DROPDOWN
+  LABELS
+  CHECKBOX
+  URL
+  EMAIL
+  PHONE
+  CURRENCY
+  LOCATION
+  FORMULA
+  RELATIONSHIP
+  PROGRESS
+  AUTOMATIC_PROGRESS
+  RATING
+  USER
+  TEAM
+}
+
 model CustomField {
-  id           String             @id @default(cuid())
+  id           String          @id @default(cuid())
   name         String
   description  String?
-  type         String // text, number, date, select, etc.
-  required     Boolean            @default(false)
-  options      Json? // For select/multiselect fields
+  type         CustomFieldType
+  required     Boolean         @default(false)
+  options      Json? // For dropdown, labels, etc.
   defaultValue Json?
   placeholder  String?
   validation   Json? // Validation rules
+  formula      String? // For formula fields
+  currency     String? // For currency fields
   position     Int
-  taskTypeId   String
-  taskType     TaskType           @relation(fields: [taskTypeId], references: [id], onDelete: Cascade)
-  values       CustomFieldValue[]
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  Project      Project?           @relation(fields: [projectId], references: [id])
+  hidden       Boolean         @default(false)
+  global       Boolean         @default(false) // Available across all projects
+  taskTypeId   String?
   projectId    String?
-  Task         Task?              @relation(fields: [taskId], references: [id])
-  taskId       String?
+  workspaceId  String?
+
+  // Relations
+  taskType  TaskType?          @relation(fields: [taskTypeId], references: [id], onDelete: Cascade)
+  project   Project?           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspace Workspace?         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  values    CustomFieldValue[]
+  tasks     Task[]
+
+  // Timestamps
+  createdAt                     DateTime                  @default(now())
+  updatedAt                     DateTime                  @updatedAt
+  sourceCustomFieldRelationship CustomFieldRelationship[] @relation("SourceRelationships")
+  targetCustomFieldRelationship CustomFieldRelationship[] @relation("TargetRelationships")
 
   @@unique([taskTypeId, name])
+  @@unique([projectId, name])
+  @@unique([workspaceId, name])
   @@index([taskTypeId])
+  @@index([projectId])
+  @@index([workspaceId])
   @@index([type])
+  @@index([global])
 }
 
 model CustomFieldValue {
@@ -37,4 +74,20 @@ model CustomFieldValue {
   @@unique([taskId, fieldId])
   @@index([taskId])
   @@index([fieldId])
+}
+
+// For relationship type custom fields
+model CustomFieldRelationship {
+  id            String      @id @default(cuid())
+  sourceFieldId String
+  targetFieldId String
+  type          String // ONE_TO_ONE, ONE_TO_MANY, MANY_TO_MANY
+  sourceField   CustomField @relation("SourceRelationships", fields: [sourceFieldId], references: [id], onDelete: Cascade)
+  targetField   CustomField @relation("TargetRelationships", fields: [targetFieldId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([sourceFieldId, targetFieldId])
+  @@index([sourceFieldId])
+  @@index([targetFieldId])
 }

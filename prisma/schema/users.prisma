@@ -102,6 +102,7 @@ model User {
   Annotation               Annotation[]
   AnnotationReaction       AnnotationReaction[]
   TaskComment              TaskComment[]
+  TaskAssignee             TaskAssignee[]
 
   @@index([email])
 }

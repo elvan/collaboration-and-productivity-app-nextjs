@@ -226,10 +226,15 @@ async function main() {
       priority: 'high',
       projectId: project.id,
       createdById: user.id,
-      assigneeId: user.id,
       statusId: todoStatus.id,
       priorityId: highPriority.id,
       listId: defaultTaskList.id,
+      position: 1.0,
+      assignees: {
+        create: {
+          userId: user.id,
+        }
+      },
     },
   });
 
@@ -241,10 +246,15 @@ async function main() {
       priority: 'medium',
       projectId: project.id,
       createdById: user.id,
-      assigneeId: user.id,
       statusId: inProgressStatus.id,
       priorityId: mediumPriority.id,
       listId: defaultTaskList.id,
+      position: 2.0,
+      assignees: {
+        create: {
+          userId: user.id,
+        }
+      },
     },
   });
 
