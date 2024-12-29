@@ -2,10 +2,14 @@ model Workspace {
   id          String   @id @default(cuid())
   name        String
   description String?
+  slug        String   @unique // URL-friendly identifier
   ownerId     String
-  settings    Json?
+  settings    Json?    @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  isArchived  Boolean  @default(false)
+  logoUrl     String?
+  theme       Json?    @default("{}")
 
   // Relations
   owner         User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
@@ -18,6 +22,7 @@ model Workspace {
   CustomField   CustomField[]
 
   @@index([ownerId])
+  @@index([slug])
 }
 
 model WorkspaceMember {
@@ -28,16 +33,36 @@ model WorkspaceMember {
   joinedAt    DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  status      String   @default("active") // active, invited, suspended
+  inviteToken String?  @unique
+  expiresAt   DateTime? // For invite tokens
 
   // Relations
   workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   role      WorkspaceRole @relation(fields: [roleId], references: [id])
 
   @@unique([workspaceId, userId])
-  @@unique([userId, workspaceId])
   @@index([workspaceId])
   @@index([userId])
+  @@index([inviteToken])
+}
+
+model WorkspaceRole {
+  id          String   @id @default(cuid())
+  name        String
+  workspaceId String
+  permissions Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isDefault   Boolean  @default(false)
+
+  // Relations
+  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members   WorkspaceMember[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
 }
 
 model WorkspaceAnalytics {
@@ -49,6 +74,9 @@ model WorkspaceAnalytics {
   documentCount  Int      @default(0)
   commentCount   Int      @default(0)
   storageUsed    BigInt   @default(0) // in bytes
+  lastActiveDate DateTime @default(now())
+  memberCount    Int      @default(0)
+  projectCount   Int      @default(0)
   lastUpdated    DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
