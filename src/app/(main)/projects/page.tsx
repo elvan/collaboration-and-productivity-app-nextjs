@@ -2,7 +2,6 @@ import { Metadata } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { DashboardShell } from "@/components/shell"
 import { DashboardHeader } from "@/components/header"
 import { redirect } from "next/navigation"
 import { ProjectManagementDashboard } from "@/components/projects/dashboard"
@@ -17,12 +16,12 @@ async function getProjects(userId: string) {
     where: {
       OR: [
         { ownerId: userId },
-        { 
-          members: { 
-            some: { 
-              userId: userId 
-            } 
-          } 
+        {
+          members: {
+            some: {
+              userId: userId
+            }
+          }
         }
       ]
     },
@@ -84,12 +83,12 @@ export default async function ProjectsPage() {
   const projects = await getProjects(session.user.id)
 
   return (
-    <DashboardShell>
+    <>
       <DashboardHeader
         heading="Projects"
         text="Manage your projects and collaborate with your team."
       />
       <ProjectManagementDashboard projects={projects} />
-    </DashboardShell>
+    </>
   )
 }

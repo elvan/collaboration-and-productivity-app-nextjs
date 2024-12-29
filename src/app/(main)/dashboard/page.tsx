@@ -2,11 +2,9 @@ import { Metadata } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { DashboardShell } from "@/components/shell"
 import { DashboardHeader } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { PlusIcon, Briefcase, CheckCircle, Clock } from "lucide-react"
-import { redirect } from "next/navigation"
 import { ProjectCard } from "@/components/dashboard/project-card"
 import { TaskList } from "@/components/dashboard/task-list"
 import { StatsCard } from "@/components/dashboard/stats-card"
@@ -182,7 +180,7 @@ export default async function DashboardPage() {
   ])
 
   return (
-    <DashboardShell>
+    <>
       <DashboardHeader
         heading="Dashboard"
         text="Welcome back! Here's an overview of your workspace."
@@ -230,6 +228,6 @@ export default async function DashboardPage() {
           <ActivityFeed activities={activities} />
         </div>
       </div>
-    </DashboardShell>
+    </>
   )
 }
