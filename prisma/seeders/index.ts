@@ -15,4 +15,6 @@ export * from './time-tracking.seeder';
 export * from './sprint.seeder';
 export * from './workflow.seeder';
 export * from './integration.seeder';
+export * from './user.seeder';
+export * from './user-notification.seeder';
 // Export other seeders here as they are created
