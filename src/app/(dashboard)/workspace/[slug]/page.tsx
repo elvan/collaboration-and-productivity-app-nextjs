@@ -2,11 +2,12 @@ import { notFound } from "next/navigation"
 import { getServerSession } from "next-auth/next"
 import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/lib/auth"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WorkspaceAnalyticsComponent } from "@/components/workspace/workspace-analytics"
-import { InviteMemberDialog } from "@/components/workspace/invite-member-dialog"
 import { MembersTable } from "@/components/workspace/members-table"
 import { RolesTable } from "@/components/workspace/roles-table"
+import { InviteMemberDialog } from "@/components/workspace/invite-member-dialog"
+import { WorkspaceSettings } from "@/components/workspace/workspace-settings"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 async function getWorkspace(slug: string, userId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -48,11 +49,13 @@ async function getWorkspace(slug: string, userId: string) {
   return workspace
 }
 
-export default async function WorkspacePage({
-  params,
-}: {
-  params: { slug: string }
-}) {
+interface WorkspacePageProps {
+  params: {
+    slug: string
+  }
+}
+
+export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return null
 
@@ -63,13 +66,13 @@ export default async function WorkspacePage({
   )
 
   return (
-    <div className='container py-8'>
-      <div className='flex justify-between items-center mb-8'>
+    <div className="container py-8">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className='text-3xl font-bold tracking-tight'>
+          <h1 className="text-3xl font-bold tracking-tight">
             {workspace.name}
           </h1>
-          <p className='text-muted-foreground'>{workspace.description}</p>
+          <p className="text-muted-foreground">{workspace.description}</p>
         </div>
         {isAdmin && (
           <InviteMemberDialog
@@ -79,18 +82,23 @@ export default async function WorkspacePage({
         )}
       </div>
 
-      <Tabs defaultValue='overview' className='space-y-4'>
+      <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value='overview'>Overview</TabsTrigger>
-          <TabsTrigger value='members'>Members</TabsTrigger>
-          {isAdmin && <TabsTrigger value='roles'>Roles</TabsTrigger>}
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="members">Members</TabsTrigger>
+          {isAdmin && (
+            <>
+              <TabsTrigger value="roles">Roles</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </>
+          )}
         </TabsList>
-        <TabsContent value='overview' className='space-y-4'>
+        <TabsContent value="overview" className="space-y-4">
           <WorkspaceAnalyticsComponent
             analytics={workspace.workspaceAnalytics}
           />
         </TabsContent>
-        <TabsContent value='members'>
+        <TabsContent value="members">
           <MembersTable
             workspaceMembers={workspace.workspaceMembers}
             workspaceRoles={workspace.workspaceRoles}
@@ -99,14 +107,19 @@ export default async function WorkspacePage({
           />
         </TabsContent>
         {isAdmin && (
-          <TabsContent value='roles'>
-            <RolesTable
-              workspaceRoles={workspace.workspaceRoles}
-              workspaceId={workspace.id}
-            />
-          </TabsContent>
+          <>
+            <TabsContent value="roles">
+              <RolesTable
+                workspaceRoles={workspace.workspaceRoles}
+                workspaceId={workspace.id}
+              />
+            </TabsContent>
+            <TabsContent value="settings">
+              <WorkspaceSettings workspace={workspace} />
+            </TabsContent>
+          </>
         )}
       </Tabs>
     </div>
-  );
+  )
 }
