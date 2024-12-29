@@ -19,8 +19,16 @@ async function getProject(projectId: string, userId: string) {
     where: {
       id: projectId,
       OR: [
-        { ownerId: userId },
-        { members: { some: { id: userId } } }
+        {
+          ownerId: userId
+        },
+        {
+          members: {
+            some: {
+              userId: userId
+            }
+          }
+        }
       ]
     },
     include: {
@@ -38,25 +46,39 @@ async function getProject(projectId: string, userId: string) {
       },
       tasks: {
         include: {
-          assignedTo: {
-            select: {
-              id: true,
-              name: true,
-              image: true
+          assignees: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true
+                }
+              }
             }
-          }
+          },
+          project: true,
+          taskStatus: true,
+          taskPriority: true,
+          taskType: true,
+          labels: true,
+          customFields: true,
+          customValues: true,
         },
         orderBy: {
           createdAt: "desc"
         }
       },
       members: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          createdAt: true
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true
+            }
+          }
         }
       },
       activities: {

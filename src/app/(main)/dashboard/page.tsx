@@ -12,6 +12,7 @@ import { TaskList } from "@/components/dashboard/task-list"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { ActivityFeed } from "@/components/dashboard/activity-feed"
 import { CalendarView } from "@/components/dashboard/calendar-view"
+import { QuickActions } from "@/components/dashboard/quick-actions"
 
 export const metadata: Metadata = {
   title: "Dashboard | CollabSpace",
@@ -138,6 +139,33 @@ async function getRecentActivities(userId: string) {
   });
 }
 
+async function getNotifications(userId: string) {
+  // For now, return mock notifications
+  return [
+    {
+      id: "1",
+      title: "New Comment",
+      message: "John commented on your task",
+      time: "2 hours ago",
+      read: false,
+    },
+    {
+      id: "2",
+      title: "Task Due Soon",
+      message: "Project proposal due in 2 hours",
+      time: "3 hours ago",
+      read: true,
+    },
+    {
+      id: "3",
+      title: "Meeting Reminder",
+      message: "Team standup in 30 minutes",
+      time: "4 hours ago",
+      read: false,
+    },
+  ]
+}
+
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
 
@@ -145,11 +173,12 @@ export default async function DashboardPage() {
     redirect("/auth")
   }
 
-  const [stats, recentProjects, upcomingTasks, activities] = await Promise.all([
+  const [stats, recentProjects, upcomingTasks, activities, notifications] = await Promise.all([
     getProjectStats(session.user.id),
     getRecentProjects(session.user.id),
     getUpcomingTasks(session.user.id),
     getRecentActivities(session.user.id),
+    getNotifications(session.user.id),
   ])
 
   return (
@@ -191,12 +220,15 @@ export default async function DashboardPage() {
           </div>
         </div>
         <div className="col-span-3">
-          <ActivityFeed activities={activities} />
+          <QuickActions notifications={notifications} />
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <TaskList tasks={upcomingTasks} />
-        <CalendarView tasks={upcomingTasks} />
+        <div className="space-y-4">
+          <CalendarView tasks={upcomingTasks} />
+          <ActivityFeed activities={activities} />
+        </div>
       </div>
     </DashboardShell>
   )
