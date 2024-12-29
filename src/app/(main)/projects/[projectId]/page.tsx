@@ -7,6 +7,7 @@ import { DashboardShell } from "@/components/shell"
 import { DashboardHeader } from "@/components/header"
 import { ProjectTabs } from "@/components/projects/project-tabs"
 import { ProjectHeader } from "@/components/projects/project-header"
+import { Project } from "@/types/project"
 
 interface ProjectPageProps {
   params: {
@@ -14,7 +15,7 @@ interface ProjectPageProps {
   }
 }
 
-async function getProject(projectId: string, userId: string) {
+async function getProject(projectId: string, userId: string): Promise<Project | null> {
   return await prisma.project.findFirst({
     where: {
       id: projectId,
