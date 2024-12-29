@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
-import { PrismaClient, ProjectStatus, TaskStatusEnum } from '@prisma/client';
+import { PrismaClient, ProjectStatus, TaskStatusEnum, TaskPriorityLevel, TaskViewType } from '@prisma/client';
 import { hash } from 'bcryptjs';
+
 const prisma = new PrismaClient();
 
 interface SeedProjectOptions {
@@ -9,11 +10,11 @@ interface SeedProjectOptions {
   teamId?: string;
   projectType?: string;
   customData?: {
-    name: string;
-    description: string;
-    status: string;
-    taskTypes: string[];
-    labels: string[];
+    name?: string;
+    description?: string;
+    status?: ProjectStatus;
+    taskTypes?: string[];
+    labels?: string[];
   };
 }
 
@@ -34,7 +35,7 @@ export async function createProject(options: SeedProjectOptions) {
 
   // Create task types specific to project type
   const taskTypes = await Promise.all(
-    (customData?.taskTypes || ['Feature', 'Bug', 'Task']).map((name, index) =>
+    (customData?.taskTypes || ['Feature', 'Bug', 'Task']).map((name) =>
       prisma.taskType.create({
         data: {
           name,
@@ -47,58 +48,35 @@ export async function createProject(options: SeedProjectOptions) {
     )
   );
 
-  // Create labels specific to project type
-  const labels = await Promise.all(
-    (customData?.labels || ['Frontend', 'Backend', 'Documentation']).map((name) =>
-      prisma.label.create({
-        data: {
-          name,
-          color: faker.internet.color(),
-          projectId: project.id,
-        },
-      })
-    )
-  );
-
-  // Create task statuses
+  // Create task statuses with workflow configuration
   const taskStatuses = await Promise.all([
     prisma.taskStatus.create({
       data: {
         name: 'To Do',
-        color: '#E2E8F0',
         description: 'Tasks that need to be started',
-        position: 1,
+        color: '#E2E8F0',
         category: TaskStatusEnum.TODO,
+        position: 1,
         projectId: project.id,
       },
     }),
     prisma.taskStatus.create({
       data: {
         name: 'In Progress',
-        color: '#3B82F6',
         description: 'Tasks currently being worked on',
+        color: '#3B82F6',
+        category: TaskStatusEnum.IN_PROGRESS,
         position: 2,
-        category: TaskStatusEnum.IN_PROGRESS,
-        projectId: project.id,
-      },
-    }),
-    prisma.taskStatus.create({
-      data: {
-        name: 'Review',
-        color: '#A855F7',
-        description: 'Tasks ready for review',
-        position: 3,
-        category: TaskStatusEnum.IN_PROGRESS,
         projectId: project.id,
       },
     }),
     prisma.taskStatus.create({
       data: {
         name: 'Done',
-        color: '#22C55E',
         description: 'Completed tasks',
-        position: 4,
+        color: '#22C55E',
         category: TaskStatusEnum.DONE,
+        position: 3,
         projectId: project.id,
       },
     }),
@@ -135,6 +113,19 @@ export async function createProject(options: SeedProjectOptions) {
     }),
   ]);
 
+  // Create labels specific to project type
+  const labels = await Promise.all(
+    (customData?.labels || ['Frontend', 'Backend', 'Documentation']).map((name) =>
+      prisma.label.create({
+        data: {
+          name,
+          color: faker.internet.color(),
+          projectId: project.id,
+        },
+      })
+    )
+  );
+
   // Create custom fields
   const customFields = await Promise.all([
     prisma.customField.create({
@@ -144,16 +135,24 @@ export async function createProject(options: SeedProjectOptions) {
         description: 'Estimated effort in story points',
         required: false,
         position: 1,
+        options: {
+          min: 1,
+          max: 13,
+          step: 0.5,
+        },
+        defaultValue: 1,
         projectId: project.id,
       },
     }),
     prisma.customField.create({
       data: {
         name: 'Target Release',
-        type: 'TEXT',
+        type: 'DROPDOWN',
         description: 'Target release version',
         required: false,
         position: 2,
+        options: ['v1.0', 'v1.1', 'v2.0'],
+        defaultValue: 'v1.0',
         projectId: project.id,
       },
     }),
@@ -163,8 +162,7 @@ export async function createProject(options: SeedProjectOptions) {
   await prisma.priorityRule.create({
     data: {
       name: 'High Priority for Urgent Bugs',
-      description:
-        'Automatically set high priority for bug reports marked as urgent',
+      description: 'Automatically set high priority for bug reports marked as urgent',
       projectId: project.id,
       conditions: {
         type: 'Bug',
@@ -239,9 +237,9 @@ export async function createProject(options: SeedProjectOptions) {
 
   return {
     project,
+    taskTypes,
     taskStatuses,
     taskPriorities,
-    taskTypes,
     labels,
     customFields,
   };
@@ -249,6 +247,7 @@ export async function createProject(options: SeedProjectOptions) {
 
 export async function seedProjectWithMembers(options: SeedProjectOptions) {
   const projectData = await createProject(options);
+  const { project } = projectData;
 
   // Create demo users for project members
   const demoUsers = await Promise.all(
@@ -266,22 +265,41 @@ export async function seedProjectWithMembers(options: SeedProjectOptions) {
   );
 
   // Create project members with different roles
-  const memberRoles = ['admin', 'member', 'member', 'member'];
   const members = await Promise.all(
-    memberRoles.map((role, index) =>
-      prisma.projectMember.create({
+    demoUsers.map((user, index) => {
+      // Assign roles in a round-robin fashion
+      const role = index === 0 ? 'admin' : 'member';
+      
+      return prisma.projectMember.create({
         data: {
-          projectId: projectData.project.id,
-          userId: demoUsers[index].id,
+          projectId: project.id,
+          userId: user.id,
           role,
         },
-      })
-    )
+      });
+    })
+  );
+
+  // Import task seeder
+  const { seedProjectTasks } = await import('./task.seeder');
+
+  // Create tasks for the project
+  const tasks = await seedProjectTasks(
+    project.id,
+    {
+      taskTypes: projectData.taskTypes,
+      taskStatuses: projectData.taskStatuses,
+      taskPriorities: projectData.taskPriorities,
+      labels: projectData.labels,
+      customFields: projectData.customFields,
+    },
+    demoUsers
   );
 
   return {
     ...projectData,
     members,
+    tasks,
   };
 }
 

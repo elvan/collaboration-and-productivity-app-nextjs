@@ -11,14 +11,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className='relative flex min-h-screen flex-col'>
       <div className='border-b'>
-        <div className='flex h-16 items-center px-4'>
-          <Link href='/' className='mr-6 flex items-center space-x-2'>
-            <span className='text-xl font-bold'>CollabSpace</span>
-          </Link>
-          <div className='flex flex-1'>
-            <Header />
-          </div>
-        </div>
+        <Header />
       </div>
       <div className='flex flex-1'>
         <main className='flex-1 overflow-y-auto'>
