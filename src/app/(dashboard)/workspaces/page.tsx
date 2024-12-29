@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 async function getWorkspaces(userId: string) {
   return prisma.workspace.findMany({
     where: {
-      members: {
+      workspaceMembers: {
         some: {
           userId,
         },
@@ -25,7 +25,7 @@ async function getWorkspaces(userId: string) {
           teams: true,
         },
       },
-      members: {
+      workspaceMembers: {
         where: {
           userId,
         },
@@ -45,9 +45,9 @@ export default async function WorkspacesPage() {
   if (!session?.user) return null
 
   const allWorkspaces = await getWorkspaces(session.user.id)
-  const workspaces = allWorkspaces.filter(workspace => 
-    workspace.members.some(member => member.status === "active")
-  )
+  const workspaces = allWorkspaces.filter((workspace) =>
+    workspace.workspaceMembers.some((member) => member.status === 'active')
+  );
 
   return (
     <div className="container py-8">
