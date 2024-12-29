@@ -340,7 +340,7 @@ model Label {
   @@index([projectId])
 }
 
-enum TaskStatuEnum {
+enum TaskStatusEnum {
   TODO
   IN_PROGRESS
   DONE

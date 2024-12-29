@@ -1,4 +1,4 @@
-import { PrismaClient, PermissionAction, PermissionResource } from '@prisma/client';
+import { PrismaClient, PermissionAction, PermissionResource, UserStatus } from '@prisma/client';
 import { hash } from 'bcryptjs';
 import { SystemRole } from '../src/types/roles';
 import { seedDemoProjects } from './seeders';
@@ -95,7 +95,12 @@ async function main() {
       name: 'Admin User',
       email: 'admin@example.com',
       password: adminPassword,
-      roleId: adminRole.id,
+      status: UserStatus.ACTIVE,
+      userRoles: {
+        create: {
+          roleId: adminRole.id
+        }
+      }
     },
   });
 
@@ -104,8 +109,16 @@ async function main() {
   const workspace = await prisma.workspace.create({
     data: {
       name: 'Demo Workspace',
-      slug: 'demo-workspace',
+      description: 'Demo workspace for testing',
       ownerId: adminUser.id,
+      settings: {
+        theme: 'light',
+        features: {
+          tasks: true,
+          calendar: true,
+          files: true
+        }
+      }
     },
   });
 

@@ -1,6 +1,5 @@
-import { PrismaClient, ProjectStatus } from '@prisma/client';
 import { faker } from '@faker-js/faker';
-
+import { PrismaClient, ProjectStatus, TaskStatusEnum } from '@prisma/client';
 const prisma = new PrismaClient();
 
 interface SeedProjectOptions {
@@ -31,7 +30,8 @@ export async function createProject(options: SeedProjectOptions) {
         name: 'To Do',
         color: '#E2E8F0',
         description: 'Tasks that need to be started',
-        order: 1,
+        position: 1,
+        category: TaskStatusEnum.TODO,
         projectId: project.id,
       },
     }),
@@ -40,7 +40,8 @@ export async function createProject(options: SeedProjectOptions) {
         name: 'In Progress',
         color: '#3B82F6',
         description: 'Tasks currently being worked on',
-        order: 2,
+        position: 2,
+        category: TaskStatusEnum.IN_PROGRESS,
         projectId: project.id,
       },
     }),
@@ -49,7 +50,8 @@ export async function createProject(options: SeedProjectOptions) {
         name: 'Review',
         color: '#A855F7',
         description: 'Tasks ready for review',
-        order: 3,
+        position: 3,
+        category: TaskStatusEnum.IN_PROGRESS,
         projectId: project.id,
       },
     }),
@@ -58,7 +60,8 @@ export async function createProject(options: SeedProjectOptions) {
         name: 'Done',
         color: '#22C55E',
         description: 'Completed tasks',
-        order: 4,
+        position: 4,
+        category: TaskStatusEnum.DONE,
         projectId: project.id,
       },
     }),
@@ -71,7 +74,7 @@ export async function createProject(options: SeedProjectOptions) {
         name: 'Low',
         color: '#94A3B8',
         description: 'Non-urgent tasks',
-        order: 1,
+        level: 1,
         projectId: project.id,
       },
     }),
@@ -80,7 +83,7 @@ export async function createProject(options: SeedProjectOptions) {
         name: 'Medium',
         color: '#F59E0B',
         description: 'Normal priority tasks',
-        order: 2,
+        level: 2,
         projectId: project.id,
       },
     }),
@@ -89,7 +92,7 @@ export async function createProject(options: SeedProjectOptions) {
         name: 'High',
         color: '#EF4444',
         description: 'Urgent tasks',
-        order: 3,
+        level: 3,
         projectId: project.id,
       },
     }),
@@ -156,6 +159,7 @@ export async function createProject(options: SeedProjectOptions) {
         type: 'NUMBER',
         description: 'Estimated effort in story points',
         required: false,
+        position: 1,
         projectId: project.id,
       },
     }),
@@ -165,6 +169,7 @@ export async function createProject(options: SeedProjectOptions) {
         type: 'TEXT',
         description: 'Target release version',
         required: false,
+        position: 2,
         projectId: project.id,
       },
     }),
@@ -174,7 +179,8 @@ export async function createProject(options: SeedProjectOptions) {
   await prisma.priorityRule.create({
     data: {
       name: 'High Priority for Urgent Bugs',
-      description: 'Automatically set high priority for bug reports marked as urgent',
+      description:
+        'Automatically set high priority for bug reports marked as urgent',
       projectId: project.id,
       conditions: {
         type: 'Bug',
@@ -188,19 +194,59 @@ export async function createProject(options: SeedProjectOptions) {
     },
   });
 
+  // Create workflow first
+  const workflow = await prisma.workflow.create({
+    data: {
+      name: 'Code Review Process',
+      description: 'Standard code review workflow',
+      projectId: project.id,
+      isActive: true,
+      steps: [
+        {
+          id: 'step1',
+          name: 'Submit for Review',
+          type: 'STATUS_CHANGE',
+          config: {
+            fromStatus: 'IN_PROGRESS',
+            toStatus: 'REVIEW',
+          },
+        },
+        {
+          id: 'step2',
+          name: 'Review Process',
+          type: 'APPROVAL',
+          config: {
+            approvers: ['TEAM_LEAD'],
+            minApprovals: 1,
+          },
+        },
+        {
+          id: 'step3',
+          name: 'Complete Review',
+          type: 'STATUS_CHANGE',
+          config: {
+            fromStatus: 'REVIEW',
+            toStatus: 'DONE',
+          },
+        },
+      ],
+    },
+  });
+
   // Create workflow automation
   await prisma.workflowAutomation.create({
     data: {
       name: 'Auto-assign Code Review',
       description: 'Automatically assign code review tasks to team leads',
       projectId: project.id,
-      trigger: 'task.status.changed',
+      workflowId: workflow.id,
+      triggerType: 'TASK_STATUS_CHANGED',
       conditions: {
         newStatus: 'Review',
         type: 'Feature',
       },
       actions: {
-        assignRole: 'team_lead',
+        assignTo: ['team_leads'],
         notify: ['assignee'],
       },
       isActive: true,

@@ -1,4 +1,4 @@
-import { PrismaClient, TaskStatuEnum, TaskPriorityLevel } from '@prisma/client';
+import { PrismaClient, TaskStatusEnum, TaskPriorityLevel } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 
 const prisma = new PrismaClient();
@@ -19,7 +19,7 @@ export async function createTask(options: SeedTaskOptions) {
     data: {
       title: faker.company.catchPhrase(),
       description: faker.lorem.paragraphs(2),
-      status: faker.helpers.enumValue(TaskStatuEnum),
+      status: faker.helpers.enumValue(TaskStatusEnum),
       priority: faker.helpers.enumValue(TaskPriorityLevel),
       dueDate: faker.date.future(),
       startDate: faker.date.past(),
