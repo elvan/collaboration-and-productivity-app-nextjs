@@ -42,3 +42,6 @@ next-env.d.ts
 
 .env
 package-lock.json
+
+# windsurf rules
+.windsurfrules
