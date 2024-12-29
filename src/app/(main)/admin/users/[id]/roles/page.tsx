@@ -27,7 +27,7 @@ interface User {
   name: string
   email: string
   image: string | null
-  userRole: UserRole[]
+  userRoles: UserRole[]
 }
 
 export default function UserRolesPage({ params }: { params: { id: string } }) {
@@ -141,7 +141,7 @@ export default function UserRolesPage({ params }: { params: { id: string } }) {
                   <Checkbox
                     id={role.id}
                     checked={userRoleIds.includes(role.id)}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       handleRoleToggle(role.id, checked as boolean)
                     }
                   />

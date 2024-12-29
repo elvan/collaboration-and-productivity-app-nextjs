@@ -32,13 +32,13 @@ export async function PUT(
         id: params.id,
       },
       include: {
-        userRole: {
+        userRoles: {
           include: {
             role: true,
           },
         },
       },
-    })
+    });
 
     return NextResponse.json(user)
   } catch (error) {

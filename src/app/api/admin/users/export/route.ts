@@ -25,38 +25,42 @@ export async function GET(request: Request) {
     // Build where clause
     const where = {
       AND: [
-        search ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } }
-          ]
-        } : {},
-        role ? {
-          userRole: {
-            some: {
-              role: {
-                name: { equals: role, mode: "insensitive" }
-              }
+        search
+          ? {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+              ],
             }
-          }
-        } : {}
-      ]
-    }
+          : {},
+        role
+          ? {
+              userRoles: {
+                some: {
+                  role: {
+                    name: { equals: role, mode: 'insensitive' },
+                  },
+                },
+              },
+            }
+          : {},
+      ],
+    };
 
     // Get users with their roles
     const users = await prisma.user.findMany({
       where,
       include: {
-        userRole: {
+        userRoles: {
           include: {
             role: true,
           },
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
-    })
+    });
 
     // Transform data for CSV
     const csvData = users.map(user => ({

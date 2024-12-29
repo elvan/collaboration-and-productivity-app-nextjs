@@ -68,7 +68,7 @@ export const authOptions: NextAuthOptions = {
               email: credentials.email,
             },
             include: {
-              userRole: {
+              userRoles: {
                 include: {
                   role: true,
                 },
@@ -90,11 +90,11 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Get the user's role
-          const userRole = user.userRole[0]?.role.name;
+          const userRole = user.userRoles?.[0]?.role?.name || 'User';
           console.log("User authenticated successfully:", {
             email: user.email,
             role: userRole,
-            roles: user.userRole,
+            roles: user.userRoles,
           });
 
           return {
@@ -102,6 +102,7 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             name: user.name,
             image: user.image,
+            roles: user.userRoles,
             role: userRole,
           };
         } catch (error) {

@@ -61,14 +61,19 @@ async function createDefaultRoles() {
 async function main() {
   // Clean up existing data in the correct order
   console.log('Cleaning up existing data...');
+  
+  // Clean up in correct order - delete dependent records first
+  await prisma.customFieldValue.deleteMany();
+  await prisma.taskAssignee.deleteMany();
   await prisma.task.deleteMany();
+  await prisma.customField.deleteMany();
   await prisma.taskPriority.deleteMany();
   await prisma.taskStatus.deleteMany();
   await prisma.taskList.deleteMany();
+  await prisma.workspaceMember.deleteMany();
   await prisma.project.deleteMany();
   await prisma.team.deleteMany();
   await prisma.workspaceRole.deleteMany();
-  await prisma.workspaceMember.deleteMany();
   await prisma.workspace.deleteMany();
   await prisma.userRole.deleteMany();
   await prisma.permission.deleteMany();
@@ -80,7 +85,7 @@ async function main() {
   const { adminRole, userRole } = await createDefaultRoles();
 
   // Create admin user
-  const adminPassword = await hash('admin123', 12);
+  const adminPassword = await hash('admin123', 10);
   const adminUser = await prisma.user.create({
     data: {
       name: 'Admin User',
@@ -95,7 +100,7 @@ async function main() {
   });
 
   // Create test user
-  const hashedPassword = await hash('password123', 12);
+  const hashedPassword = await hash('password123', 10);
   const user = await prisma.user.create({
     data: {
       name: 'Test User',
@@ -205,10 +210,10 @@ async function main() {
     },
   });
 
-  // Create task list for views
+  // Create default task list
   const defaultTaskList = await prisma.taskList.create({
     data: {
-      name: 'All Tasks',
+      name: 'Default List',
       description: 'Default view for all tasks',
       viewType: 'list',
       projectId: project.id,
@@ -216,6 +221,51 @@ async function main() {
       sortOrder: { field: 'createdAt', direction: 'desc' },
     },
   });
+
+  // Create custom fields
+  const customFields = await Promise.all([
+    // Text field
+    prisma.customField.create({
+      data: {
+        name: 'Documentation Link',
+        type: 'TEXT',
+        description: 'Link to related documentation',
+        required: false,
+        placeholder: 'Enter documentation URL',
+        position: 1,
+        projectId: project.id
+      }
+    }),
+    
+    // Dropdown field
+    prisma.customField.create({
+      data: {
+        name: 'Environment',
+        type: 'DROPDOWN',
+        description: 'Target environment for this task',
+        required: true,
+        options: {
+          options: ['DEV', 'STAGING', 'PROD']
+        },
+        defaultValue: { value: 'DEV' },
+        position: 2,
+        projectId: project.id
+      }
+    }),
+
+    // Number field with currency
+    prisma.customField.create({
+      data: {
+        name: 'Budget',
+        type: 'CURRENCY',
+        description: 'Budget allocated for this task',
+        required: false,
+        currency: 'USD',
+        position: 3,
+        projectId: project.id
+      }
+    })
+  ]);
 
   // Create tasks
   const task1 = await prisma.task.create({
@@ -237,6 +287,31 @@ async function main() {
       },
     },
   });
+
+  // Add custom field values to task1
+  await Promise.all([
+    prisma.customFieldValue.create({
+      data: {
+        taskId: task1.id,
+        fieldId: customFields[0].id,
+        value: { value: 'https://docs.example.com/task1' }
+      }
+    }),
+    prisma.customFieldValue.create({
+      data: {
+        taskId: task1.id,
+        fieldId: customFields[1].id,
+        value: { value: 'STAGING' }
+      }
+    }),
+    prisma.customFieldValue.create({
+      data: {
+        taskId: task1.id,
+        fieldId: customFields[2].id,
+        value: { value: 1000 }
+      }
+    })
+  ]);
 
   const task2 = await prisma.task.create({
     data: {

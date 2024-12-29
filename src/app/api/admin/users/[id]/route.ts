@@ -11,13 +11,13 @@ export async function GET(
         id: params.id,
       },
       include: {
-        userRole: {
+        userRoles: {
           include: {
             role: true,
           },
         },
       },
-    })
+    });
 
     if (!user) {
       return new NextResponse("User not found", { status: 404 })
@@ -47,13 +47,13 @@ export async function PUT(
         image,
       },
       include: {
-        userRole: {
+        userRoles: {
           include: {
             role: true,
           },
         },
       },
-    })
+    });
 
     return NextResponse.json(user)
   } catch (error) {

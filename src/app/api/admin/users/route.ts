@@ -40,7 +40,7 @@ export async function GET(request: Request) {
           ]
         } : {},
         role ? {
-          userRole: {
+          userRoles: {
             some: {
               role: {
                 name: { equals: role, mode: "insensitive" }
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     const users = await prisma.user.findMany({
       where,
       include: {
-        userRole: {
+        userRoles: {
           include: {
             role: true,
           },
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
       },
       skip: (page - 1) * pageSize,
       take: pageSize,
-    })
+    });
 
     return NextResponse.json({
       users,
@@ -120,13 +120,13 @@ export async function POST(request: Request) {
         image,
       },
       include: {
-        userRole: {
+        userRoles: {
           include: {
             role: true,
           },
         },
       },
-    })
+    });
 
     return NextResponse.json(user)
   } catch (error) {
@@ -163,13 +163,13 @@ export async function PATCH(request: Request) {
         },
       },
       include: {
-        userRole: {
+        userRoles: {
           include: {
             role: true,
           },
         },
       },
-    })
+    });
 
     // Filter out admin users
     const adminUsers = selectedUsers.filter(user =>
