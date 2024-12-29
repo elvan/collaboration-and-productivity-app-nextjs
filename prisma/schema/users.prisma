@@ -103,6 +103,17 @@ model User {
   AnnotationReaction       AnnotationReaction[]
   TaskComment              TaskComment[]
   TaskAssignee             TaskAssignee[]
+  WorkspaceActivity        WorkspaceActivity[]
+
+  folderTemplateVersionCommentReaction FolderTemplateVersionCommentReaction[]
+  folderTemplateVersionCommentMentions FolderTemplateVersionComment[]         @relation("CommentMentions")
+  folderTemplateVersionCommentReplies  FolderTemplateVersionComment[]         @relation("CommentReplies")
+  folderTemplate                       FolderTemplate[]
+  folderTemplateBranch                 FolderTemplateBranch[]
+  folderTemplateBranchMerge            FolderTemplateBranchMerge[]
+  folderTemplateVersion                FolderTemplateVersion[]
+  folderShare                          FolderShare[]
+  folderTemplateVersionComment         FolderTemplateVersionComment[]
 
   @@index([email])
 }

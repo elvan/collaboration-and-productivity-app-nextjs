@@ -12,11 +12,11 @@ model Project {
   position    Float         @default(0)
 
   // Relations
-  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  team      Team?           @relation(fields: [teamId], references: [id])
-  owner     User            @relation("ProjectOwner", fields: [ownerId], references: [id])
-  members   ProjectMember[]
-  folder    ProjectFolder?  @relation(fields: [folderId], references: [id])
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  team          Team?           @relation(fields: [teamId], references: [id])
+  owner         User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  members       ProjectMember[]
+  projectFolder ProjectFolder?  @relation(fields: [folderId], references: [id])
 
   // Task Management
   tasks          Task[]
@@ -46,6 +46,9 @@ model Project {
   // Integrations
   integrations Integration[]
   Sprint       Sprint[]
+
+  folderTags FolderTag[]
+  Folder     Folder[]
 
   @@index([workspaceId])
   @@index([teamId])
@@ -117,6 +120,10 @@ model ProjectFolder {
   parent    ProjectFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id])
   children  ProjectFolder[] @relation("FolderHierarchy")
   projects  Project[]
+
+  folderTags  FolderTag[]
+  FolderShare FolderShare[]
+  Folder      Folder[]
 
   @@unique([workspaceId, name])
   @@index([workspaceId])

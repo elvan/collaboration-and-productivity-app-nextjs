@@ -12,15 +12,20 @@ model Workspace {
   theme       Json?    @default("{}")
 
   // Relations
-  owner              User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
-  workspaceMembers   WorkspaceMember[]
-  teams              Team[]
-  projects           Project[]
-  workspaceAnalytics WorkspaceAnalytics?
-  workspaceRoles     WorkspaceRole[]
-  workflows          Workflow[]
-  customFields       CustomField[]
-  projectFolders     ProjectFolder[]
+  owner                  User                     @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  workspaceMembers       WorkspaceMember[]
+  teams                  Team[]
+  projects               Project[]
+  workspaceAnalytics     WorkspaceAnalytics?
+  workspaceRoles         WorkspaceRole[]
+  workflows              Workflow[]
+  customFields           CustomField[]
+  projectFolders         ProjectFolder[]
+  activities             WorkspaceActivity[]
+  Folder                 Folder[]
+  FolderTemplate         FolderTemplate[]
+  FolderTemplateCategory FolderTemplateCategory[]
+  FolderTag              FolderTag[]
 
   @@index([ownerId])
   @@index([slug])
@@ -87,4 +92,26 @@ model WorkspaceAnalytics {
   workspace Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])
+}
+
+model WorkspaceActivity {
+  id         String   @id @default(cuid())
+  type       String // e.g., "create", "update", "delete", "move", "share"
+  entityType String // e.g., "project", "folder", "tag", "template"
+  entityId   String // ID of the affected entity
+  entityName String // Name of the affected entity
+  details    Json? // Additional details about the activity
+  createdAt  DateTime @default(now())
+
+  // Relations
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
 }

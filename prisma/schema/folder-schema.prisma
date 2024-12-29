@@ -1,0 +1,191 @@
+model Folder {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   @default("#94A3B8") // Default color
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  projects    Project[]
+  folders     ProjectFolder[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model FolderTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  structure   Json // Stores the folder structure as a nested JSON object
+  isGlobal    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace            Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId          String
+  createdBy            User                    @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdById          String
+  category             FolderTemplateCategory? @relation(fields: [categoryId], references: [id])
+  categoryId           String?
+  currentVersion       Int                     @default(1)
+  versions             FolderTemplateVersion[]
+  FolderTemplateBranch FolderTemplateBranch[]
+
+  @@index([categoryId])
+  @@index([workspaceId])
+  @@index([createdById])
+}
+
+model FolderTemplateCategory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#94A3B8")
+  icon        String? // Store icon name from lucide-react
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  templates   FolderTemplate[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model FolderTemplateBranch {
+  id          String                      @id @default(cuid())
+  name        String
+  description String?
+  isDefault   Boolean                     @default(false)
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
+  template    FolderTemplate              @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId  String
+  createdBy   User                        @relation(fields: [createdById], references: [id])
+  createdById String
+  versions    FolderTemplateVersion[]
+  merges      FolderTemplateBranchMerge[] @relation("SourceBranch")
+  mergedInto  FolderTemplateBranchMerge[] @relation("TargetBranch")
+
+  @@unique([templateId, name])
+  @@index([templateId])
+  @@index([createdById])
+}
+
+model FolderTemplateBranchMerge {
+  id             String               @id @default(cuid())
+  sourceBranch   FolderTemplateBranch @relation("SourceBranch", fields: [sourceBranchId], references: [id])
+  sourceBranchId String
+  targetBranch   FolderTemplateBranch @relation("TargetBranch", fields: [targetBranchId], references: [id])
+  targetBranchId String
+  mergedAt       DateTime             @default(now())
+  mergedBy       User                 @relation(fields: [mergedById], references: [id])
+  mergedById     String
+  conflicts      Json?
+  resolution     Json?
+
+  @@index([sourceBranchId])
+  @@index([targetBranchId])
+  @@index([mergedById])
+}
+
+model FolderTemplateVersion {
+  id          String   @id @default(cuid())
+  version     Int
+  name        String
+  description String?
+  structure   Json
+  changelog   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  template                     FolderTemplate                 @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId                   String
+  createdBy                    User                           @relation(fields: [createdById], references: [id])
+  createdById                  String
+  FolderTemplateVersionComment FolderTemplateVersionComment[]
+  FolderTemplateBranch         FolderTemplateBranch[]
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@index([createdById])
+}
+
+model FolderShare {
+  id        String   @id @default(cuid())
+  role      String // "viewer", "editor", "admin"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  folder   ProjectFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  folderId String
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+
+  @@unique([folderId, userId])
+  @@index([folderId])
+  @@index([userId])
+}
+
+model FolderTag {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   @default("#94A3B8") // Default color
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String
+  projects    Project[]
+  folders     ProjectFolder[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model FolderTemplateVersionComment {
+  id          String                                 @id @default(cuid())
+  content     String
+  createdAt   DateTime                               @default(now())
+  updatedAt   DateTime                               @updatedAt
+  version     FolderTemplateVersion                  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  versionId   String
+  createdBy   User                                   @relation(fields: [createdById], references: [id])
+  createdById String
+  parent      FolderTemplateVersionComment?          @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parentId    String?
+  replies     FolderTemplateVersionComment[]         @relation("CommentReplies")
+  mentions    User[]                                 @relation("CommentMentions")
+  reactions   FolderTemplateVersionCommentReaction[]
+  User        User[]                                 @relation("CommentReplies")
+
+  @@index([versionId])
+  @@index([createdById])
+  @@index([parentId])
+}
+
+model FolderTemplateVersionCommentReaction {
+  id          String                       @id @default(cuid())
+  emoji       String
+  createdAt   DateTime                     @default(now())
+  comment     FolderTemplateVersionComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId   String
+  createdBy   User                         @relation(fields: [createdById], references: [id])
+  createdById String
+
+  @@unique([commentId, createdById, emoji])
+  @@index([commentId])
+  @@index([createdById])
+}
