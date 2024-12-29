@@ -7,22 +7,58 @@ interface SeedProjectOptions {
   workspaceId: string;
   ownerId: string;
   teamId?: string;
+  projectType?: string;
+  customData?: {
+    name: string;
+    description: string;
+    status: string;
+    taskTypes: string[];
+    labels: string[];
+  };
 }
 
 export async function createProject(options: SeedProjectOptions) {
-  const { workspaceId, ownerId, teamId } = options;
+  const { workspaceId, ownerId, teamId, customData } = options;
 
   // Create project with realistic data
   const project = await prisma.project.create({
     data: {
-      name: faker.company.catchPhrase(),
-      description: faker.company.buzzPhrase(),
+      name: customData?.name || faker.company.catchPhrase(),
+      description: customData?.description || faker.company.buzzPhrase(),
       workspaceId,
       ownerId,
-      status: faker.helpers.arrayElement(Object.values(ProjectStatus)),
-      ...(teamId ? { teamId } : {}), // Only include teamId if provided
+      status: (customData?.status as ProjectStatus) || faker.helpers.arrayElement(Object.values(ProjectStatus)),
+      ...(teamId ? { teamId } : {}),
     },
   });
+
+  // Create task types specific to project type
+  const taskTypes = await Promise.all(
+    (customData?.taskTypes || ['Feature', 'Bug', 'Task']).map((name, index) =>
+      prisma.taskType.create({
+        data: {
+          name,
+          description: `${name} type tasks`,
+          icon: faker.helpers.arrayElement(['Star', 'Bug', 'File', 'Task', 'Folder']),
+          color: faker.internet.color(),
+          projectId: project.id,
+        },
+      })
+    )
+  );
+
+  // Create labels specific to project type
+  const labels = await Promise.all(
+    (customData?.labels || ['Frontend', 'Backend', 'Documentation']).map((name) =>
+      prisma.label.create({
+        data: {
+          name,
+          color: faker.internet.color(),
+          projectId: project.id,
+        },
+      })
+    )
+  );
 
   // Create task statuses
   const taskStatuses = await Promise.all([
@@ -94,59 +130,6 @@ export async function createProject(options: SeedProjectOptions) {
         color: '#EF4444',
         description: 'Urgent tasks',
         level: 3,
-        projectId: project.id,
-      },
-    }),
-  ]);
-
-  // Create task types
-  const taskTypes = await Promise.all([
-    prisma.taskType.create({
-      data: {
-        name: 'Feature',
-        color: '#3B82F6',
-        icon: 'Star',
-        projectId: project.id,
-      },
-    }),
-    prisma.taskType.create({
-      data: {
-        name: 'Bug',
-        color: '#EF4444',
-        icon: 'Bug',
-        projectId: project.id,
-      },
-    }),
-    prisma.taskType.create({
-      data: {
-        name: 'Documentation',
-        color: '#A855F7',
-        icon: 'FileText',
-        projectId: project.id,
-      },
-    }),
-  ]);
-
-  // Create labels
-  const labels = await Promise.all([
-    prisma.label.create({
-      data: {
-        name: 'Frontend',
-        color: '#60A5FA',
-        projectId: project.id,
-      },
-    }),
-    prisma.label.create({
-      data: {
-        name: 'Backend',
-        color: '#34D399',
-        projectId: project.id,
-      },
-    }),
-    prisma.label.create({
-      data: {
-        name: 'UI/UX',
-        color: '#F472B6',
         projectId: project.id,
       },
     }),
@@ -303,19 +286,64 @@ export async function seedProjectWithMembers(options: SeedProjectOptions) {
 }
 
 export async function seedDemoProjects(workspaceId: string, ownerId: string, teamId?: string) {
-  // Create multiple demo projects
-  const projects = await Promise.all([
-    seedProjectWithMembers({
-      workspaceId,
-      ownerId,
-      teamId,
-    }),
-    seedProjectWithMembers({
-      workspaceId,
-      ownerId,
-      teamId,
-    }),
-  ]);
+  // Project types with their associated task types and labels
+  const projectTypes = [
+    {
+      category: 'Software Development',
+      taskTypes: ['Feature', 'Bug', 'Documentation', 'Technical Debt'],
+      labels: ['Frontend', 'Backend', 'API', 'Database', 'UI/UX', 'Testing'],
+      prefixes: ['Web App', 'Mobile App', 'API', 'Platform', 'Dashboard'],
+    },
+    {
+      category: 'Marketing',
+      taskTypes: ['Campaign', 'Content', 'Design', 'Analytics', 'Social Media'],
+      labels: ['Branding', 'Social', 'Email', 'SEO', 'Content Marketing'],
+      prefixes: ['Campaign', 'Launch', 'Brand', 'Marketing'],
+    },
+    {
+      category: 'Design',
+      taskTypes: ['UI Design', 'UX Research', 'Prototyping', 'Visual Design'],
+      labels: ['Web Design', 'Mobile Design', 'Branding', 'Illustration'],
+      prefixes: ['Design System', 'Website', 'Product'],
+    },
+    {
+      category: 'Business',
+      taskTypes: ['Research', 'Planning', 'Analysis', 'Strategy'],
+      labels: ['Strategy', 'Operations', 'Finance', 'HR', 'Legal'],
+      prefixes: ['Strategy', 'Initiative', 'Program'],
+    },
+  ];
+
+  // Create 25 projects
+  const projects = await Promise.all(
+    Array(25).fill(0).map(async (_, index) => {
+      // Select random project type
+      const projectType = faker.helpers.arrayElement(projectTypes);
+      
+      // Generate project name
+      const prefix = faker.helpers.arrayElement(projectType.prefixes);
+      const name = index < 5 
+        ? `${prefix} ${faker.company.buzzNoun()}` // More generic names for first 5
+        : `${prefix} - ${faker.company.catchPhrase()}`; // More specific names for rest
+
+      // Create project with members
+      const project = await seedProjectWithMembers({
+        workspaceId,
+        ownerId,
+        teamId: index % 3 === 0 ? teamId : undefined, // Assign team to every 3rd project
+        projectType: projectType.category,
+        customData: {
+          name,
+          description: faker.company.catchPhrase() + '. ' + faker.lorem.paragraph(),
+          status: index < 20 ? 'ACTIVE' : 'ARCHIVED', // Make last 5 projects archived
+          taskTypes: projectType.taskTypes,
+          labels: projectType.labels,
+        }
+      });
+
+      return project;
+    })
+  );
 
   return projects;
 }
