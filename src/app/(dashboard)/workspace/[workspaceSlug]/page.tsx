@@ -71,15 +71,15 @@ async function getWorkspace(slug: string, userId: string) {
 
 interface WorkspacePageProps {
   params: {
-    slug: string
-  }
+    workspaceSlug: string;
+  };
 }
 
 export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return null
 
-  const workspace = await getWorkspace(params.slug, session.user.id)
+  const workspace = await getWorkspace(params.workspaceSlug, session.user.id);
   const isAdmin = workspace.workspaceMembers.some(
     (member) =>
       member.userId === session.user.id && member.role.name === "Admin"
