@@ -68,11 +68,11 @@ export async function GET(request: Request) {
             type: "document",
             title: doc.title,
             excerpt: doc.content.substring(0, 150),
-            url: \`/documents/\${doc.id}\`,
+            url: `/documents/${doc.id}`,
             createdAt: doc.createdAt,
             author: doc.author,
             matchedContent: doc.content.match(
-              new RegExp(\`.{0,50}\${query}.{0,50}\`, "i")
+              new RegExp(`.{0,50}${query}.{0,50}`, "i")
             )?.[0],
           }))
         )
@@ -111,11 +111,11 @@ export async function GET(request: Request) {
             type: "article",
             title: article.title,
             excerpt: article.content.substring(0, 150),
-            url: \`/knowledge-base/\${article.id}\`,
+            url: `/knowledge-base/${article.id}`,
             createdAt: article.createdAt,
             author: article.author,
             matchedContent: article.content.match(
-              new RegExp(\`.{0,50}\${query}.{0,50}\`, "i")
+              new RegExp(`.{0,50}${query}.{0,50}`, "i")
             )?.[0],
           }))
         )
@@ -151,13 +151,13 @@ export async function GET(request: Request) {
           ...comments.map((comment) => ({
             id: comment.id,
             type: "comment",
-            title: \`Comment on "\${comment.article.title}"\`,
+            title: `Comment on "${comment.article.title}"`,
             excerpt: comment.content,
-            url: \`/knowledge-base/\${comment.article.id}#comment-\${comment.id}\`,
+            url: `/knowledge-base/${comment.article.id}#comment-${comment.id}`,
             createdAt: comment.createdAt,
             author: comment.user,
             matchedContent: comment.content.match(
-              new RegExp(\`.{0,50}\${query}.{0,50}\`, "i")
+              new RegExp(`.{0,50}${query}.{0,50}`, "i")
             )?.[0],
           }))
         )

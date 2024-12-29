@@ -78,7 +78,7 @@ export function AdvancedSearchForm() {
     if (data.includeArchived) queryParams.set("archived", "true")
     if (data.exactMatch) queryParams.set("exact", "true")
 
-    const response = await fetch(\`/api/search/advanced?\${queryParams}\`)
+    const response = await fetch(`/api/search/advanced?${queryParams}`)
     if (response.ok) {
       const results = await response.json()
       setSearchResults(results)
