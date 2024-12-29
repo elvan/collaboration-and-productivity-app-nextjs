@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -40,8 +42,8 @@ const formSchema = z.object({
 })
 
 interface RolesTableProps {
-  roles: WorkspaceRole[]
-  workspaceId: string
+  workspaceRoles: WorkspaceRole[];
+  workspaceId: string;
 }
 
 const AVAILABLE_PERMISSIONS = [
@@ -53,52 +55,52 @@ const AVAILABLE_PERMISSIONS = [
   "manage_settings",
 ]
 
-export function RolesTable({ roles, workspaceId }: RolesTableProps) {
-  const [open, setOpen] = useState(false)
-  const router = useRouter()
-  const { toast } = useToast()
+export function RolesTable({ workspaceRoles, workspaceId }: RolesTableProps) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      name: '',
       permissions: [],
     },
-  })
+  });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       const response = await fetch(`/api/workspaces/${workspaceId}/roles`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(values),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to create role")
+        throw new Error('Failed to create role');
       }
 
       toast({
-        title: "Success",
-        description: "Role created successfully",
-      })
-      setOpen(false)
-      router.refresh()
+        title: 'Success',
+        description: 'Role created successfully',
+      });
+      setOpen(false);
+      router.refresh();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to create role",
-        variant: "destructive",
-      })
+        title: 'Error',
+        description: 'Failed to create role',
+        variant: 'destructive',
+      });
     }
   }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Workspace Roles</h2>
+      <div className='flex justify-between items-center mb-4'>
+        <h2 className='text-lg font-semibold'>Workspace Roles</h2>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>Create Role</Button>
@@ -113,16 +115,16 @@ export function RolesTable({ roles, workspaceId }: RolesTableProps) {
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
+                className='space-y-4'
               >
                 <FormField
                   control={form.control}
-                  name="name"
+                  name='name'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Role name" {...field} />
+                        <Input placeholder='Role name' {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -130,25 +132,25 @@ export function RolesTable({ roles, workspaceId }: RolesTableProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="permissions"
+                  name='permissions'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Permissions</FormLabel>
-                      <div className="flex flex-wrap gap-2">
+                      <div className='flex flex-wrap gap-2'>
                         {AVAILABLE_PERMISSIONS.map((permission) => (
                           <Badge
                             key={permission}
                             variant={
                               field.value.includes(permission)
-                                ? "default"
-                                : "outline"
+                                ? 'default'
+                                : 'outline'
                             }
-                            className="cursor-pointer"
+                            className='cursor-pointer'
                             onClick={() => {
                               const newValue = field.value.includes(permission)
                                 ? field.value.filter((p) => p !== permission)
-                                : [...field.value, permission]
-                              field.onChange(newValue)
+                                : [...field.value, permission];
+                              field.onChange(newValue);
                             }}
                           >
                             {permission}
@@ -160,7 +162,7 @@ export function RolesTable({ roles, workspaceId }: RolesTableProps) {
                   )}
                 />
                 <DialogFooter>
-                  <Button type="submit" loading={form.formState.isSubmitting}>
+                  <Button type='submit' loading={form.formState.isSubmitting}>
                     Create
                   </Button>
                 </DialogFooter>
@@ -178,27 +180,25 @@ export function RolesTable({ roles, workspaceId }: RolesTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {roles.map((role) => (
+          {workspaceRoles.map((role) => (
             <TableRow key={role.id}>
-              <TableCell className="font-medium">{role.name}</TableCell>
+              <TableCell className='font-medium'>{role.name}</TableCell>
               <TableCell>
-                <div className="flex flex-wrap gap-1">
+                <div className='flex flex-wrap gap-1'>
                   {(role.permissions as string[]).map((permission) => (
-                    <Badge key={permission} variant="secondary">
+                    <Badge key={permission} variant='secondary'>
                       {permission}
                     </Badge>
                   ))}
                 </div>
               </TableCell>
               <TableCell>
-                {role.isDefault && (
-                  <Badge variant="default">Default</Badge>
-                )}
+                {role.isDefault && <Badge variant='default'>Default</Badge>}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }

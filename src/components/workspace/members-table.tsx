@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -32,86 +34,83 @@ import { useToast } from "@/components/ui/use-toast"
 import { WorkspaceRole, WorkspaceMember, User } from "@prisma/client"
 
 interface MembersTableProps {
-  members: (WorkspaceMember & {
-    user: Pick<User, "id" | "name" | "email" | "image">
-    role: WorkspaceRole
-  })[]
-  roles: WorkspaceRole[]
-  workspaceId: string
-  isAdmin: boolean
+  workspaceMembers: (WorkspaceMember & {
+    user: Pick<User, 'id' | 'name' | 'email' | 'image'>;
+    role: WorkspaceRole;
+  })[];
+  workspaceRoles: WorkspaceRole[];
+  workspaceId: string;
+  isAdmin: boolean;
 }
 
 export function MembersTable({
-  members,
-  roles,
+  workspaceMembers,
+  workspaceRoles,
   workspaceId,
   isAdmin,
 }: MembersTableProps) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [loading, setLoading] = useState<string | null>(null)
+  const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState<string | null>(null);
 
   async function updateMemberRole(userId: string, roleId: string) {
     try {
-      setLoading(userId)
-      const response = await fetch(
-        `/api/workspaces/${workspaceId}/members`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId, roleId }),
-        }
-      )
+      setLoading(userId);
+      const response = await fetch(`/api/workspaces/${workspaceId}/members`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, roleId }),
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to update member role")
+        throw new Error('Failed to update member role');
       }
 
       toast({
-        title: "Success",
-        description: "Member role updated successfully",
-      })
-      router.refresh()
+        title: 'Success',
+        description: 'Member role updated successfully',
+      });
+      router.refresh();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to update member role",
-        variant: "destructive",
-      })
+        title: 'Error',
+        description: 'Failed to update member role',
+        variant: 'destructive',
+      });
     } finally {
-      setLoading(null)
+      setLoading(null);
     }
   }
 
   async function removeMember(userId: string) {
     try {
-      setLoading(userId)
+      setLoading(userId);
       const response = await fetch(
         `/api/workspaces/${workspaceId}/members?userId=${userId}`,
         {
-          method: "DELETE",
+          method: 'DELETE',
         }
-      )
+      );
 
       if (!response.ok) {
-        throw new Error("Failed to remove member")
+        throw new Error('Failed to remove member');
       }
 
       toast({
-        title: "Success",
-        description: "Member removed successfully",
-      })
-      router.refresh()
+        title: 'Success',
+        description: 'Member removed successfully',
+      });
+      router.refresh();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to remove member",
-        variant: "destructive",
-      })
+        title: 'Error',
+        description: 'Failed to remove member',
+        variant: 'destructive',
+      });
     } finally {
-      setLoading(null)
+      setLoading(null);
     }
   }
 
@@ -122,16 +121,19 @@ export function MembersTable({
           <TableHead>Member</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Joined</TableHead>
-          {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+          {isAdmin && <TableHead className='text-right'>Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {members.map((member) => (
+        {workspaceMembers.map((member) => (
           <TableRow key={member.id}>
-            <TableCell className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
+            <TableCell className='flex items-center gap-2'>
+              <Avatar className='h-8 w-8'>
                 {member.user.image ? (
-                  <AvatarImage src={member.user.image} alt={member.user.name || ""} />
+                  <AvatarImage
+                    src={member.user.image}
+                    alt={member.user.name || ''}
+                  />
                 ) : (
                   <AvatarFallback>
                     {member.user.name?.substring(0, 2).toUpperCase()}
@@ -139,8 +141,8 @@ export function MembersTable({
                 )}
               </Avatar>
               <div>
-                <div className="font-medium">{member.user.name}</div>
-                <div className="text-sm text-muted-foreground">
+                <div className='font-medium'>{member.user.name}</div>
+                <div className='text-sm text-muted-foreground'>
                   {member.user.email}
                 </div>
               </div>
@@ -154,11 +156,11 @@ export function MembersTable({
                   }
                   disabled={loading === member.user.id}
                 >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select a role" />
+                  <SelectTrigger className='w-[180px]'>
+                    <SelectValue placeholder='Select a role' />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles.map((role) => (
+                    {workspaceRoles.map((role) => (
                       <SelectItem key={role.id} value={role.id}>
                         {role.name}
                       </SelectItem>
@@ -173,12 +175,12 @@ export function MembersTable({
               {new Date(member.joinedAt).toLocaleDateString()}
             </TableCell>
             {isAdmin && (
-              <TableCell className="text-right">
+              <TableCell className='text-right'>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
-                      variant="destructive"
-                      size="sm"
+                      variant='destructive'
+                      size='sm'
                       disabled={loading === member.user.id}
                     >
                       Remove
@@ -208,5 +210,5 @@ export function MembersTable({
         ))}
       </TableBody>
     </Table>
-  )
+  );
 }

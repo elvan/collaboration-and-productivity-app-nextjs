@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -39,10 +41,10 @@ const formSchema = z.object({
 
 interface InviteMemberDialogProps {
   workspaceId: string
-  roles: WorkspaceRole[]
+  workspaceRoles: WorkspaceRole[]
 }
 
-export function InviteMemberDialog({ workspaceId, roles }: InviteMemberDialogProps) {
+export function InviteMemberDialog({ workspaceId, workspaceRoles }: InviteMemberDialogProps) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -127,7 +129,7 @@ export function InviteMemberDialog({ workspaceId, roles }: InviteMemberDialogPro
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {roles.map((role) => (
+                      {workspaceRoles.map((role) => (
                         <SelectItem key={role.id} value={role.id}>
                           {role.name}
                         </SelectItem>

@@ -12,14 +12,14 @@ model Workspace {
   theme       Json?    @default("{}")
 
   // Relations
-  owner       User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
-  members     WorkspaceMember[]
-  teams       Team[]
-  projects    Project[]
-  analytics   WorkspaceAnalytics?
-  roles       WorkspaceRole[]
-  Workflow    Workflow[]
-  CustomField CustomField[]
+  owner              User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  workspaceMembers   WorkspaceMember[]
+  teams              Team[]
+  projects           Project[]
+  workspaceAnalytics WorkspaceAnalytics?
+  workspaceRoles     WorkspaceRole[]
+  workflows          Workflow[]
+  customFields       CustomField[]
 
   @@index([ownerId])
   @@index([slug])

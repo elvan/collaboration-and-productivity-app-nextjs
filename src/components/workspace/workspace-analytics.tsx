@@ -1,3 +1,5 @@
+"use client"
+
 import { WorkspaceAnalytics } from "@prisma/client"
 import {
   Card,
@@ -9,10 +11,14 @@ import {
 import { formatBytes } from "@/lib/utils"
 
 interface WorkspaceAnalyticsProps {
-  analytics: WorkspaceAnalytics
+  analytics: WorkspaceAnalytics | null
 }
 
-export function WorkspaceAnalyticsComponent({ analytics }: WorkspaceAnalyticsProps) {
+export function WorkspaceAnalyticsComponent({
+  analytics,
+}: WorkspaceAnalyticsProps) {
+  if (!analytics) return null
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>

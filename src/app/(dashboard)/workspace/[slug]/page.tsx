@@ -12,7 +12,7 @@ async function getWorkspace(slug: string, userId: string) {
   const workspace = await prisma.workspace.findFirst({
     where: {
       slug,
-      members: {
+      workspaceMembers: {
         some: {
           userId,
           status: "active",
@@ -20,7 +20,7 @@ async function getWorkspace(slug: string, userId: string) {
       },
     },
     include: {
-      members: {
+      workspaceMembers: {
         where: {
           status: "active",
         },
@@ -36,8 +36,8 @@ async function getWorkspace(slug: string, userId: string) {
           role: true,
         },
       },
-      WorkspaceRole: true,
-      analytics: true,
+      workspaceRoles: true,
+      workspaceAnalytics: true,
     },
   })
 
@@ -57,49 +57,56 @@ export default async function WorkspacePage({
   if (!session?.user) return null
 
   const workspace = await getWorkspace(params.slug, session.user.id)
-  const isAdmin = workspace.members.some(
+  const isAdmin = workspace.workspaceMembers.some(
     (member) =>
       member.userId === session.user.id && member.role.name === "Admin"
   )
 
   return (
-    <div className="container py-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className='container py-8'>
+      <div className='flex justify-between items-center mb-8'>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className='text-3xl font-bold tracking-tight'>
             {workspace.name}
           </h1>
-          <p className="text-muted-foreground">{workspace.description}</p>
+          <p className='text-muted-foreground'>{workspace.description}</p>
         </div>
-        {isAdmin && <InviteMemberDialog workspaceId={workspace.id} roles={workspace.WorkspaceRole} />}
+        {isAdmin && (
+          <InviteMemberDialog
+            workspaceId={workspace.id}
+            workspaceRoles={workspace.workspaceRoles}
+          />
+        )}
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue='overview' className='space-y-4'>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="members">Members</TabsTrigger>
-          {isAdmin && <TabsTrigger value="roles">Roles</TabsTrigger>}
+          <TabsTrigger value='overview'>Overview</TabsTrigger>
+          <TabsTrigger value='members'>Members</TabsTrigger>
+          {isAdmin && <TabsTrigger value='roles'>Roles</TabsTrigger>}
         </TabsList>
-        <TabsContent value="overview" className="space-y-4">
-          <WorkspaceAnalyticsComponent analytics={workspace.analytics} />
+        <TabsContent value='overview' className='space-y-4'>
+          <WorkspaceAnalyticsComponent
+            analytics={workspace.workspaceAnalytics}
+          />
         </TabsContent>
-        <TabsContent value="members">
+        <TabsContent value='members'>
           <MembersTable
-            members={workspace.members}
-            roles={workspace.WorkspaceRole}
+            workspaceMembers={workspace.workspaceMembers}
+            workspaceRoles={workspace.workspaceRoles}
             workspaceId={workspace.id}
             isAdmin={isAdmin}
           />
         </TabsContent>
         {isAdmin && (
-          <TabsContent value="roles">
+          <TabsContent value='roles'>
             <RolesTable
-              roles={workspace.WorkspaceRole}
+              workspaceRoles={workspace.workspaceRoles}
               workspaceId={workspace.id}
             />
           </TabsContent>
         )}
       </Tabs>
     </div>
-  )
+  );
 }

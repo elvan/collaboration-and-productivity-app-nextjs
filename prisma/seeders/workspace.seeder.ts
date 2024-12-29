@@ -45,7 +45,7 @@ export async function createWorkspace(options: SeedWorkspaceOptions) {
           automations: true,
         },
       },
-      analytics: {
+      workspaceAnalytics: {
         create: {
           activeUsers: faker.number.int({ min: 5, max: 50 }),
           taskCount: faker.number.int({ min: 100, max: 1000 }),
@@ -57,7 +57,7 @@ export async function createWorkspace(options: SeedWorkspaceOptions) {
           projectCount: faker.number.int({ min: 3, max: 20 }),
         },
       },
-      roles: {
+      workspaceRoles: {
         create: [
           {
             name: 'Admin',
@@ -78,12 +78,14 @@ export async function createWorkspace(options: SeedWorkspaceOptions) {
       },
     },
     include: {
-      roles: true,
+      workspaceRoles: true,
     },
   });
 
   // Create a member record for the owner with admin role
-  const adminRole = workspace.roles.find(role => role.name === 'Admin');
+  const adminRole = workspace.workspaceRoles.find(
+    (role) => role.name === 'Admin'
+  );
   if (!adminRole) {
     throw new Error('Admin role not found');
   }
