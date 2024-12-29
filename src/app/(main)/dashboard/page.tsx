@@ -27,7 +27,11 @@ async function getProjectStats(userId: string) {
 
   const dueTasks = await prisma.task.count({
     where: {
-      assigneeId: userId,
+      assignees: {
+        some: {
+          userId: userId
+        }
+      },
       status: { not: "completed" },
       dueDate: {
         lte: new Date(Date.now() + 24 * 60 * 60 * 1000) // Due within 24 hours
@@ -37,7 +41,11 @@ async function getProjectStats(userId: string) {
 
   const completedTasks = await prisma.task.count({
     where: {
-      assigneeId: userId,
+      assignees: {
+        some: {
+          userId: userId
+        }
+      },
       status: "completed"
     }
   })
@@ -92,19 +100,23 @@ async function getRecentProjects(userId: string) {
 async function getUpcomingTasks(userId: string) {
   return await prisma.task.findMany({
     where: {
-      assigneeId: userId,
+      assignees: {
+        some: {
+          userId: userId
+        }
+      },
       status: { not: "completed" },
       dueDate: {
-        gte: new Date()
-      }
+        gte: new Date(),
+      },
     },
     orderBy: {
-      dueDate: "asc"
+      dueDate: "asc",
     },
     take: 5,
     include: {
-      project: true
-    }
+      project: true,
+    },
   })
 }
 
