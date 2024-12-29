@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { ProjectFolder, WorkspaceRole } from "@prisma/client"
+import { ProjectFolder, ProjectTemplate, WorkspaceRole } from "@prisma/client"
 import { useToast } from "@/components/ui/use-toast"
 import {
   Dialog,
@@ -42,6 +42,7 @@ const formSchema = z.object({
   folderId: z.string().optional(),
   teamId: z.string().optional(),
   visibility: z.enum(["private", "team", "public"]),
+  templateId: z.string().optional(),
 })
 
 interface CreateProjectDialogProps {
@@ -56,9 +57,14 @@ export function CreateProjectDialog({
   workspaceRoles,
 }: CreateProjectDialogProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [templates, setTemplates] = useState<ProjectTemplate[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(
+    null
+  )
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -68,8 +74,38 @@ export function CreateProjectDialog({
       folderId: undefined,
       teamId: undefined,
       visibility: "private",
+      templateId: searchParams.get("template") || undefined,
     },
   })
+
+  // Load templates when dialog opens
+  const onOpenChange = async (open: boolean) => {
+    setOpen(open)
+    if (open && templates.length === 0) {
+      try {
+        const response = await fetch(
+          `/api/workspaces/${workspaceId}/project-templates`
+        )
+        if (!response.ok) throw new Error("Failed to load templates")
+        const data = await response.json()
+        setTemplates(data)
+
+        // If template ID is in URL, load template details
+        const templateId = searchParams.get("template")
+        if (templateId) {
+          const templateResponse = await fetch(
+            `/api/workspaces/${workspaceId}/project-templates/${templateId}`
+          )
+          if (templateResponse.ok) {
+            const template = await templateResponse.json()
+            setSelectedTemplate(template)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load templates:", error)
+      }
+    }
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -95,7 +131,9 @@ export function CreateProjectDialog({
       setOpen(false)
       form.reset()
       router.refresh()
-      router.push(`/workspace/${workspaceId}/project/${project.id}`)
+      router.push(
+        `/workspace/${workspaceId}/project/${project.id}/board`
+      )
     } catch (error) {
       toast({
         title: "Error",
@@ -107,8 +145,23 @@ export function CreateProjectDialog({
     }
   }
 
+  // Update form when template is selected
+  const onTemplateChange = async (templateId: string) => {
+    try {
+      const response = await fetch(
+        `/api/workspaces/${workspaceId}/project-templates/${templateId}`
+      )
+      if (!response.ok) throw new Error("Failed to load template")
+      const template = await response.json()
+      setSelectedTemplate(template)
+      form.setValue("templateId", templateId)
+    } catch (error) {
+      console.error("Failed to load template:", error)
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button>Create Project</Button>
       </DialogTrigger>
@@ -116,11 +169,46 @@ export function CreateProjectDialog({
         <DialogHeader>
           <DialogTitle>Create Project</DialogTitle>
           <DialogDescription>
-            Create a new project in this workspace
+            Create a new project in your workspace
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="templateId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Template</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value)
+                      onTemplateChange(value)
+                    }}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a template" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">No template</SelectItem>
+                      {templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Optional template to start with
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="name"
@@ -134,6 +222,7 @@ export function CreateProjectDialog({
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="description"
@@ -154,6 +243,7 @@ export function CreateProjectDialog({
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="folderId"
@@ -185,6 +275,41 @@ export function CreateProjectDialog({
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="teamId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Team</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a team" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">No team</SelectItem>
+                      {workspaceRoles
+                        .filter((role) => role.type === "TEAM")
+                        .map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Optional team to assign to the project
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="visibility"
@@ -213,6 +338,7 @@ export function CreateProjectDialog({
                 </FormItem>
               )}
             />
+
             <DialogFooter>
               <Button type="submit" loading={loading}>
                 Create Project
