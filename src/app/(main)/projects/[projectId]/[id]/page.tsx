@@ -5,13 +5,13 @@ import { ProjectView } from '@/components/projects/project-view'
 
 interface ProjectPageProps {
   params: {
-    id: string
+    projectId: string
   }
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
-  const project = await getProject(params.id)
-  const tasks = await getProjectTasks(params.id)
+  const project = await getProject(params.projectId)
+  const tasks = await getProjectTasks(params.projectId)
 
   if (!project) {
     notFound()
