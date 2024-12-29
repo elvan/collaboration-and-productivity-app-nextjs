@@ -26,20 +26,20 @@ model Workspace {
 }
 
 model WorkspaceMember {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   workspaceId String
   userId      String
   roleId      String
-  joinedAt    DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  status      String   @default("active") // active, invited, suspended
-  inviteToken String?  @unique
+  joinedAt    DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  status      String    @default("active") // active, invited, suspended
+  inviteToken String?   @unique
   expiresAt   DateTime? // For invite tokens
 
   // Relations
   workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   role      WorkspaceRole @relation(fields: [roleId], references: [id])
 
   @@unique([workspaceId, userId])
@@ -58,11 +58,18 @@ model WorkspaceRole {
   isDefault   Boolean  @default(false)
 
   // Relations
-  workspace Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   members   WorkspaceMember[]
+  roleId    String
+  userId    String
+  role      Role              @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, name])
+  @@unique([workspaceId, userId, roleId])
   @@index([workspaceId])
+  @@index([roleId])
+  @@index([userId])
 }
 
 model WorkspaceAnalytics {

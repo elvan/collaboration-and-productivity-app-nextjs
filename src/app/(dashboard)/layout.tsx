@@ -1,5 +1,5 @@
 import { Header } from "@/components/layout/header"
-import { MainNav } from '@/components/layout/main-nav';
+import { Sidebar } from '@/components/layout/sidebar';
 import { cn } from '@/lib/utils';
 import Link from "next/link"
 
@@ -20,7 +20,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className='hidden border-r bg-background lg:block lg:w-60'>
               <div className='flex h-full flex-col gap-2'>
                 <div className='flex-1 overflow-auto py-2'>
-                  <MainNav />
+                  <Sidebar />
                 </div>
               </div>
             </div>

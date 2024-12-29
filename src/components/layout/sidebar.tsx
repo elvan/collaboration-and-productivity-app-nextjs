@@ -46,7 +46,7 @@ const projectLinks = [
   },
 ]
 
-export function MainNav() {
+export function Sidebar() {
   const pathname = usePathname()
 
   return (
@@ -142,6 +142,16 @@ export function MainNav() {
         </h2>
         <nav className="grid gap-1">
           <Link
+            href="/workspaces"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+              pathname === "/workspaces" ? "bg-accent" : "transparent"
+            )}
+          >
+            <FolderKanban className="h-4 w-4" />
+            Workspaces
+          </Link>
+          <Link
             href="/team"
             className={cn(
               "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
@@ -152,10 +162,20 @@ export function MainNav() {
             Team
           </Link>
           <Link
-            href="/analytics"
+            href="/workspaces?view=members"
             className={cn(
               "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-              pathname === "/analytics" ? "bg-accent" : "transparent"
+              pathname === "/workspaces" && new URLSearchParams(pathname).get("view") === "members" ? "bg-accent" : "transparent"
+            )}
+          >
+            <Users className="h-4 w-4" />
+            Members
+          </Link>
+          <Link
+            href="/workspaces?view=analytics"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+              pathname === "/workspaces" && new URLSearchParams(pathname).get("view") === "analytics" ? "bg-accent" : "transparent"
             )}
           >
             <BarChart2 className="h-4 w-4" />

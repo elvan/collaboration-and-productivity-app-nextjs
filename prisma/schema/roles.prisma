@@ -46,26 +46,6 @@ model UserRole {
   @@index([roleId])
 }
 
-model WorkspaceRole {
-  id          String   @id @default(cuid())
-  workspaceId String
-  roleId      String
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  role            Role              @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  WorkspaceMember WorkspaceMember[]
-
-  @@unique([workspaceId, userId, roleId])
-  @@index([workspaceId])
-  @@index([roleId])
-  @@index([userId])
-}
-
 model TeamRole {
   id        String   @id @default(cuid())
   teamId    String
