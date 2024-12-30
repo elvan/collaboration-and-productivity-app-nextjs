@@ -15,6 +15,9 @@ import {
   Bell,
   Settings,
   Zap,
+  Search,
+  Book,
+  Video,
 } from "lucide-react"
 import {
   Accordion,
@@ -115,6 +118,16 @@ export function Sidebar() {
           Calendar
         </Link>
         <Link
+          href="/meetings"
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+            pathname === "/meetings" ? "bg-accent" : "transparent"
+          )}
+        >
+          <Video className="h-4 w-4" />
+          Meetings
+        </Link>
+        <Link
           href="/documents"
           className={cn(
             "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
@@ -123,6 +136,36 @@ export function Sidebar() {
         >
           <FileText className="h-4 w-4" />
           Documents
+        </Link>
+        <Link
+          href="/knowledge-base"
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+            pathname === "/knowledge-base" ? "bg-accent" : "transparent"
+          )}
+        >
+          <Book className="h-4 w-4" />
+          Knowledge Base
+        </Link>
+        <Link
+          href="/team-chat"
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+            pathname === "/team-chat" ? "bg-accent" : "transparent"
+          )}
+        >
+          <MessageSquare className="h-4 w-4" />
+          Team Chat
+        </Link>
+        <Link
+          href="/search"
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+            pathname === "/search" ? "bg-accent" : "transparent"
+          )}
+        >
+          <Search className="h-4 w-4" />
+          Search
         </Link>
         <Link
           href="/messages"
