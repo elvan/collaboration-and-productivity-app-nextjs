@@ -13,6 +13,7 @@ async function main() {
   console.log('Cleaning up existing data...');
 
   // Clean up in correct order - delete dependent records first
+  await prisma.channel.deleteMany();
   await prisma.customFieldValue.deleteMany();
   await prisma.taskAssignee.deleteMany();
   await prisma.task.deleteMany();
@@ -29,6 +30,7 @@ async function main() {
   await prisma.userRole.deleteMany();
   await prisma.permission.deleteMany();
   await prisma.role.deleteMany();
+  await prisma.user.deleteMany();
 
   // Create all roles
   console.log('Creating roles...');
@@ -50,6 +52,25 @@ async function main() {
           roleId: roles.adminRole.id
         }
       }
+    },
+  });
+
+  // Create demo Junior Programmer
+  console.log('Creating demo Junior Programmer...');
+  const juniorPassword = await hash('junior123', 12);
+  const juniorUser = await prisma.user.upsert({
+    where: { email: 'junior-programmer@example.com' },
+    update: {},
+    create: {
+      name: 'Junior Programmer',
+      email: 'junior-programmer@example.com',
+      password: juniorPassword,
+      status: UserStatus.ACTIVE,
+      userRoles: {
+        create: {
+          roleId: roles.userRole.id,
+        },
+      },
     },
   });
 

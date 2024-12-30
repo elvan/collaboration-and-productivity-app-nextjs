@@ -139,6 +139,25 @@ export async function seedWorkspaceWithMembers(options: SeedWorkspaceOptions) {
     });
   }
 
+  // Register the Junior Programmer to the workspace
+  console.log('Registering Junior Programmer to the workspace...');
+  const juniorProgrammer = await prisma.user.findFirst({
+    where: {
+      email: 'junior-programmer@example.com',
+    },
+  });
+
+  if (juniorProgrammer) {
+    await prisma.workspaceMember.create({
+      data: {
+        workspaceId: workspace.id,
+        userId: juniorProgrammer.id,
+        roleId: memberRole.id,
+        status: 'active',
+      },
+    });
+  }
+
   return workspace;
 }
 

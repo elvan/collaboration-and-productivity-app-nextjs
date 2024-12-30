@@ -269,7 +269,7 @@ export async function seedProjectWithMembers(options: SeedProjectOptions) {
     demoUsers.map((user, index) => {
       // Assign roles in a round-robin fashion
       const role = index === 0 ? 'admin' : 'member';
-      
+
       return prisma.projectMember.create({
         data: {
           projectId: project.id,
@@ -332,15 +332,15 @@ export async function seedDemoProjects(workspaceId: string, ownerId: string, tea
     },
   ];
 
-  // Create 25 projects
+  // Create 10 projects
   const projects = await Promise.all(
-    Array(25).fill(0).map(async (_, index) => {
+    Array(10).fill(0).map(async (_, index) => {
       // Select random project type
       const projectType = faker.helpers.arrayElement(projectTypes);
-      
+
       // Generate project name
       const prefix = faker.helpers.arrayElement(projectType.prefixes);
-      const name = index < 5 
+      const name = index < 5
         ? `${prefix} ${faker.company.buzzNoun()}` // More generic names for first 5
         : `${prefix} - ${faker.company.catchPhrase()}`; // More specific names for rest
 
