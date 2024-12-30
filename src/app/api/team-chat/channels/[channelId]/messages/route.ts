@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 import { pusherServer } from "@/lib/pusher"
 
 export async function GET(
-  request: Request,
+  req: Request,
   { params }: { params: { channelId: string } }
 ) {
   try {
-    const session = await getServerSession()
-    if (!session) {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
@@ -40,23 +41,46 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
+  req: Request,
   { params }: { params: { channelId: string } }
 ) {
   try {
-    const session = await getServerSession()
-    if (!session) {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const body = await request.json()
-    const { content } = body
+    const { content } = await req.json()
+
+    // First verify the channel exists and user is a member
+    const channel = await prisma.channel.findFirst({
+      where: {
+        id: params.channelId,
+        members: {
+          some: {
+            userId: session.user.id,
+          },
+        },
+      },
+    })
+
+    if (!channel) {
+      return new NextResponse("Channel not found or access denied", { status: 404 })
+    }
 
     const message = await prisma.message.create({
       data: {
         content,
-        channelId: params.channelId,
-        userId: session.user.id,
+        channel: {
+          connect: {
+            id: params.channelId,
+          },
+        },
+        user: {
+          connect: {
+            id: session.user.id,
+          },
+        },
       },
       include: {
         user: {
