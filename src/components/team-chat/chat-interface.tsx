@@ -6,7 +6,6 @@ import { useSocket } from "@/hooks/use-socket"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ChatSidebar } from "./chat-sidebar"
 import { MessageList } from "./message-list"
 import { Send, Plus } from "lucide-react"
@@ -17,6 +16,7 @@ export function ChatInterface() {
   const [message, setMessage] = useState("")
   const [currentChannel, setCurrentChannel] = useState("general")
   const scrollRef = useRef<HTMLDivElement>(null)
+  const channelRef = useRef<any>(null)
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ["chat-messages", currentChannel],
@@ -45,26 +45,39 @@ export function ChatInterface() {
     onSuccess: (newMessage) => {
       queryClient.setQueryData(
         ["chat-messages", currentChannel],
-        (old: any[]) => [...old, newMessage]
+        (old: any[] = []) => [...old, newMessage]
       )
       scrollToBottom()
     },
   })
 
   useEffect(() => {
-    if (socket) {
-      socket.on("new_message", (newMessage: any) => {
-        if (newMessage.channelId === currentChannel) {
-          queryClient.setQueryData(
-            ["chat-messages", currentChannel],
-            (old: any[]) => [...old, newMessage]
-          )
-          scrollToBottom()
-        }
-      })
+    if (!socket) return
 
-      return () => {
-        socket.off("new_message")
+    // Unsubscribe from previous channel
+    if (channelRef.current) {
+      channelRef.current.unbind_all()
+      channelRef.current.unsubscribe()
+    }
+
+    // Subscribe to new channel
+    const channelName = `channel-${currentChannel}`
+    channelRef.current = socket.subscribe(channelName)
+
+    channelRef.current.bind("new_message", (newMessage: any) => {
+      if (newMessage.channelId === currentChannel) {
+        queryClient.setQueryData(
+          ["chat-messages", currentChannel],
+          (old: any[] = []) => [...old, newMessage]
+        )
+        scrollToBottom()
+      }
+    })
+
+    return () => {
+      if (channelRef.current) {
+        channelRef.current.unbind_all()
+        channelRef.current.unsubscribe()
       }
     }
   }, [socket, currentChannel, queryClient])

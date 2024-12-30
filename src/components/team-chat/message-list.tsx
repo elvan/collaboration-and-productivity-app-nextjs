@@ -1,15 +1,18 @@
-import { format } from "date-fns"
+"use client"
+
+import { useSession } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatDistanceToNow } from "date-fns"
 
 interface Message {
   id: string
   content: string
-  createdAt: Date
+  createdAt: string
   user: {
     id: string
     name: string
-    image?: string | null
+    image: string
   }
 }
 
@@ -18,16 +21,18 @@ interface MessageListProps {
   isLoading: boolean
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
+export function MessageList({ messages = [], isLoading }: MessageListProps) {
+  const { data: session } = useSession()
+
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex items-start space-x-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-start gap-3">
             <Skeleton className="h-10 w-10 rounded-full" />
             <div className="space-y-2">
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-4 w-[400px]" />
+              <Skeleton className="h-4 w-[200px]" />
+              <Skeleton className="h-4 w-[300px]" />
             </div>
           </div>
         ))}
@@ -37,37 +42,47 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
 
   return (
     <div className="space-y-4">
-      {messages.map((message, index) => {
-        const showHeader =
-          index === 0 ||
-          messages[index - 1].user.id !== message.user.id ||
-          new Date(messages[index - 1].createdAt).getTime() <
-            new Date(message.createdAt).getTime() - 5 * 60 * 1000
+      {messages.map((message) => {
+        const isOwn = message.user.id === session?.user?.id
 
         return (
-          <div key={message.id} className="flex items-start space-x-4">
-            {showHeader && (
-              <Avatar>
-                <AvatarImage src={message.user.image || undefined} />
-                <AvatarFallback>
-                  {message.user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              </Avatar>
-            )}
-            {!showHeader && <div className="w-10" />}
-            <div className="space-y-1">
-              {showHeader && (
-                <div className="flex items-center space-x-2">
-                  <span className="font-semibold">{message.user.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {format(new Date(message.createdAt), "h:mm a")}
-                  </span>
-                </div>
-              )}
-              <p className="text-sm">{message.content}</p>
+          <div
+            key={message.id}
+            className={`flex items-start gap-3 ${
+              isOwn ? "flex-row-reverse" : ""
+            }`}
+          >
+            <Avatar>
+              <AvatarImage src={message.user.image} alt={message.user.name} />
+              <AvatarFallback>
+                {message.user.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
+              </AvatarFallback>
+            </Avatar>
+            <div
+              className={`space-y-1 ${
+                isOwn ? "items-end text-right" : "items-start"
+              }`}
+            >
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-semibold">{message.user.name}</span>
+                <span className="text-muted-foreground">
+                  {formatDistanceToNow(new Date(message.createdAt), {
+                    addSuffix: true,
+                  })}
+                </span>
+              </div>
+              <div
+                className={`rounded-lg px-3 py-2 ${
+                  isOwn
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {message.content}
+              </div>
             </div>
           </div>
         )

@@ -1,51 +1,23 @@
-import { useEffect, useRef } from "react";
-import { io, Socket } from "socket.io-client";
+import Pusher from "pusher-js";
+import { useEffect, useState } from "react";
 
-export const useSocket = () => {
-  const socket = useRef<Socket>();
+const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY!;
+const pusherCluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER!;
+
+export function useSocket() {
+  const [socket, setSocket] = useState<Pusher | null>(null);
 
   useEffect(() => {
-    if (!socket.current) {
-      socket.current = io(process.env.NEXT_PUBLIC_APP_URL!, {
-        path: "/api/socketio",
-        addTrailingSlash: false,
-      });
+    const pusher = new Pusher(pusherKey, {
+      cluster: pusherCluster,
+    });
 
-      socket.current.on("connect", () => {
-        console.log("Socket connected");
-      });
-
-      socket.current.on("disconnect", () => {
-        console.log("Socket disconnected");
-      });
-    }
+    setSocket(pusher);
 
     return () => {
-      if (socket.current) {
-        socket.current.disconnect();
-      }
+      pusher.disconnect();
     };
   }, []);
 
-  const joinProject = (projectId: string) => {
-    socket.current?.emit("join-project", projectId);
-  };
-
-  const leaveProject = (projectId: string) => {
-    socket.current?.emit("leave-project", projectId);
-  };
-
-  const subscribeToEvent = (event: string, callback: (data: any) => void) => {
-    socket.current?.on(event, callback);
-    return () => {
-      socket.current?.off(event, callback);
-    };
-  };
-
-  return {
-    socket: socket.current,
-    joinProject,
-    leaveProject,
-    subscribeToEvent,
-  };
-};
+  return socket;
+}
