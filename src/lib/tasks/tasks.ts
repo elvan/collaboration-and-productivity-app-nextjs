@@ -1,4 +1,5 @@
 import { db } from "@/lib/db"
+import { Task } from "@prisma/client"
 
 export interface Task {
   id: string
@@ -14,74 +15,112 @@ export interface Task {
   tags: string[]
 }
 
-export async function getTask(taskId: string): Promise<Task | null> {
-  // TODO: Implement actual database query
-  return {
-    id: taskId,
-    title: "Sample Task",
-    description: "This is a sample task.",
-    status: "todo",
-    priority: "medium",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: ["sample"],
+export async function filterTasks(filters: {
+  status?: string[]
+  priority?: string[]
+  assigneeId?: string
+  projectId?: string
+  search?: string
+  dueDate?: { start: Date; end: Date }
+}) {
+  const where = {
+    ...(filters.status?.length && { status: { in: filters.status } }),
+    ...(filters.priority?.length && { priority: { in: filters.priority } }),
+    ...(filters.assigneeId && { assigneeId: filters.assigneeId }),
+    ...(filters.projectId && { projectId: filters.projectId }),
+    ...(filters.search && {
+      OR: [
+        { title: { contains: filters.search, mode: "insensitive" } },
+        { description: { contains: filters.search, mode: "insensitive" } },
+      ],
+    }),
+    ...(filters.dueDate && {
+      dueDate: {
+        gte: filters.dueDate.start,
+        lte: filters.dueDate.end,
+      },
+    }),
   }
+
+  return db.task.findMany({
+    where,
+    include: {
+      assignee: true,
+      project: true,
+    },
+  })
+}
+
+export async function getTask(id: string): Promise<Task | null> {
+  return db.task.findUnique({
+    where: { id },
+    include: {
+      assignee: true,
+      project: true,
+    },
+  })
 }
 
 export async function getAllTasks(): Promise<Task[]> {
-  // TODO: Implement actual database query
-  return [
-    {
-      id: "1",
-      title: "Implement Feature",
-      description: "Implement new feature X",
-      status: "in-progress",
-      priority: "high",
-      assigneeId: "user-1",
-      projectId: "project-1",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      tags: ["feature", "development"],
+  return db.task.findMany({
+    include: {
+      assignee: true,
+      project: true,
     },
-  ]
+  })
 }
 
 export async function createTask(data: Partial<Task>): Promise<Task> {
-  // TODO: Implement actual database query
-  return {
-    id: "new-task",
-    title: data.title || "New Task",
-    description: data.description || "",
-    status: data.status || "todo",
-    priority: data.priority || "medium",
-    assigneeId: data.assigneeId,
-    projectId: data.projectId,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: data.tags || [],
-  }
+  return db.task.create({
+    data: data as any,
+    include: {
+      assignee: true,
+      project: true,
+    },
+  })
 }
 
-export async function updateTask(
+export async function updateTask(id: string, data: Partial<Task>): Promise<Task> {
+  return db.task.update({
+    where: { id },
+    data,
+    include: {
+      assignee: true,
+      project: true,
+    },
+  })
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  await db.task.delete({
+    where: { id },
+  })
+}
+
+export async function updateTaskStatus(
+  id: string,
+  status: Task["status"]
+): Promise<void> {
+  await db.task.update({
+    where: { id },
+    data: { status },
+  })
+}
+
+export async function updateTaskPriority(
+  id: string,
+  priority: Task["priority"]
+): Promise<void> {
+  await db.task.update({
+    where: { id },
+    data: { priority },
+  })
+}
+
+export async function assignTask(
   taskId: string,
-  data: Partial<Task>
-): Promise<Task> {
-  // TODO: Implement actual database query
-  return {
-    id: taskId,
-    title: data.title || "Updated Task",
-    description: data.description || "",
-    status: data.status || "todo",
-    priority: data.priority || "medium",
-    assigneeId: data.assigneeId,
-    projectId: data.projectId,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: data.tags || [],
-  }
-}
-
-export async function deleteTask(taskId: string): Promise<void> {
+  assigneeId: string
+): Promise<void> {
   // TODO: Implement actual database query
 }
 
@@ -95,13 +134,6 @@ export async function updateTaskStatus(
 export async function updateTaskPriority(
   taskId: string,
   priority: Task["priority"]
-): Promise<void> {
-  // TODO: Implement actual database query
-}
-
-export async function assignTask(
-  taskId: string,
-  assigneeId: string
 ): Promise<void> {
   // TODO: Implement actual database query
 }

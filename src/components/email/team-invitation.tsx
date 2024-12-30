@@ -1,8 +1,8 @@
 interface TeamInvitationEmailProps {
-  teamName: string;
-  inviterName: string;
-  inviteUrl: string;
-  expiresAt: Date;
+  teamName: string
+  inviterName: string
+  inviteUrl: string
+  expiresAt: Date
 }
 
 export function TeamInvitationEmail({
@@ -19,26 +19,26 @@ export function TeamInvitationEmail({
         <a
           href={inviteUrl}
           style={{
-            backgroundColor: '#0070f3',
-            color: 'white',
-            padding: '12px 24px',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            display: 'inline-block',
-            marginTop: '16px',
-            marginBottom: '16px',
+            backgroundColor: "#0070f3",
+            color: "white",
+            padding: "12px 24px",
+            borderRadius: "6px",
+            textDecoration: "none",
+            display: "inline-block",
+            marginTop: "16px",
+            marginBottom: "16px",
           }}
         >
           Accept Invitation
         </a>
       </div>
       <p>
-        This invitation will expire on{' '}
-        {new Date(expiresAt).toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
+        This invitation will expire on{" "}
+        {new Date(expiresAt).toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
         })}
       </p>
       <p>
@@ -46,5 +46,5 @@ export function TeamInvitationEmail({
         you accept the invitation.
       </p>
     </div>
-  );
+  )
 }
