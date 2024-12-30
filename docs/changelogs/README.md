@@ -1,72 +1,44 @@
 # CollabSpace Changelogs
 
-This directory contains detailed changelogs for all major features and updates to the CollabSpace platform.
+This directory contains changelogs for all major features and updates to CollabSpace.
 
 ## Latest Changes
 
 ### December 30, 2024
-- [Meeting Management Feature Release](./2024-12-30-meeting-management.md)
-  - Complete meeting management system
-  - Calendar and list views
-  - Real-time meeting discussions
-  - Attendee management
-- [Documents & Knowledge Base Release](./2024-12-30-documents-knowledge-base.md)
-  - Document management system
-  - Knowledge base functionality
-  - Collaborative editing
-  - Version control
-- [Advanced Search Implementation](./2024-12-30-advanced-search.md)
-  - Global search functionality
-  - Advanced search filters
-  - Real-time search suggestions
-  - Search analytics
+- [Sidebar Navigation Reorganization](./2024-12-30-sidebar-reorganization.md) - Improved navigation structure and new features
+- [Team Collaboration Features](./2024-12-30-team-collaboration.md) - Real-time chat and collaboration tools
+- [Advanced Search Implementation](./2024-12-30-advanced-search.md) - Global search with advanced filtering
+- [Documents & Knowledge Base](./2024-12-30-documents-knowledge-base.md) - Document management and knowledge sharing
+- [Meeting Management](./2024-12-30-meeting-management.md) - Meeting scheduling and management features
+
+## Categories
+
+### UI/UX Improvements
+- [Sidebar Navigation Reorganization](./2024-12-30-sidebar-reorganization.md)
+
+### Core Features
 - [Team Collaboration Features](./2024-12-30-team-collaboration.md)
-  - Real-time chat system
-  - Channel management
-  - File sharing
-  - Team coordination
-
-## Previous Updates
-
-### Team Chat Implementation
-- Real-time messaging
-- Channel management
-- Direct messages
-- File sharing
-- Message threading
-- Emoji reactions
-
-### Document Management
-- Document organization
-- Version control
-- Collaborative editing
-- Document sharing
-- Access control
-
-### Search Functionality
-- Global search
-- Advanced filters
-- Real-time search results
-- Search history
+- [Advanced Search Implementation](./2024-12-30-advanced-search.md)
+- [Documents & Knowledge Base](./2024-12-30-documents-knowledge-base.md)
+- [Meeting Management](./2024-12-30-meeting-management.md)
 
 ## Changelog Format
 
-Each changelog follows a standard format:
-
-1. **Overview**: Brief description of the release
-2. **New Features**: Detailed list of new functionality
-3. **Technical Changes**: Backend and infrastructure updates
-4. **UI Components**: Frontend changes and improvements
-5. **Known Issues**: Current limitations and bugs
-6. **Upcoming Features**: Planned developments
-7. **Migration Guide**: Steps for updating (if necessary)
+Each changelog follows this format:
+1. Overview
+2. New Features
+3. Changes
+4. Technical Details
+5. Migration Notes
+6. Accessibility
+7. Performance Impact
+8. Future Considerations
 
 ## Contributing
 
-When adding new features or making significant changes:
-
-1. Create a new changelog file with the date and feature name
-2. Follow the standard format
-3. Update this README with a link to the new changelog
-4. Include any necessary migration steps
-5. Document known issues and limitations
+When adding new changelogs:
+1. Use the date format: YYYY-MM-DD
+2. Follow the established format
+3. Include all relevant sections
+4. Update this README
+5. Link related documentation
