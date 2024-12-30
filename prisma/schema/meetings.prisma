@@ -1,0 +1,45 @@
+model Meeting {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  status      String      @default("scheduled") // scheduled, in-progress, completed, cancelled
+  meetingUrl  String?
+  notes       String?     @db.Text
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdById String
+  createdBy   User        @relation("MeetingCreator", fields: [createdById], references: [id])
+  attendees   MeetingAttendee[]
+  messages    MeetingMessage[]
+
+  @@index([createdById])
+}
+
+model MeetingAttendee {
+  id          String      @id @default(cuid())
+  meetingId   String
+  userId      String
+  status      String      @default("pending") // accepted, declined, pending
+  joinedAt    DateTime?
+  meeting     Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@index([userId])
+}
+
+model MeetingMessage {
+  id          String      @id @default(cuid())
+  content     String      @db.Text
+  meetingId   String
+  userId      String
+  createdAt   DateTime    @default(now())
+  meeting     Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@index([meetingId])
+  @@index([userId])
+}
