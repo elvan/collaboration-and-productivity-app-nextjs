@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { ABTestDialog } from "@/components/notifications/ab-test-dialog"
+import { AbTestDialog } from "@/components/notifications/ab-test-dialog"
 import { Badge } from "@/components/ui/badge"
 
 interface ABTest {

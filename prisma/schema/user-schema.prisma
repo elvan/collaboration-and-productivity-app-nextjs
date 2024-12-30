@@ -122,19 +122,19 @@ model User {
   userSecurity   UserSecurity?
 
   workspaceActivities WorkspaceActivity[]
+  Article             Article[]
+  ArticleView         ArticleView[]
+  Comment             Comment[]
+  Favorite            Favorite[]
+  Meeting             Meeting[]           @relation("MeetingCreator")
+  MeetingAttendee     MeetingAttendee[]
+  MeetingMessage      MeetingMessage[]
+  Message             Message[]
+  Reaction            Reaction[]
+  ChannelMember       ChannelMember[]
+  Channel             Channel[]           @relation("ChannelCreator")
 
   @@index([email])
-  Article Article[]
-  ArticleView ArticleView[]
-  Comment Comment[]
-  Favorite Favorite[]
-  Meeting Meeting[] @relation("MeetingCreator")
-  MeetingAttendee MeetingAttendee[]
-  MeetingMessage MeetingMessage[]
-  Message Message[]
-  Reaction Reaction[]
-  ChannelMember ChannelMember[]
-  Channel Channel[] @relation("ChannelCreator")
 }
 
 model Account {
