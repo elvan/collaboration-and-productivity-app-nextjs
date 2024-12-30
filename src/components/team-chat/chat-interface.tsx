@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSocket } from "@/hooks/use-socket"
+import { useSession } from "next-auth/react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -12,11 +13,14 @@ import { Send, Plus } from "lucide-react"
 
 export function ChatInterface() {
   const socket = useSocket()
+  const { data: session } = useSession()
   const queryClient = useQueryClient()
   const [message, setMessage] = useState("")
   const [currentChannel, setCurrentChannel] = useState("general")
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
   const channelRef = useRef<any>(null)
+  const typingTimeoutRef = useRef<NodeJS.Timeout>()
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ["chat-messages", currentChannel],
@@ -74,6 +78,23 @@ export function ChatInterface() {
       }
     })
 
+    // Handle typing indicators
+    channelRef.current.bind("user_typing", (data: { userId: string, userName: string }) => {
+      setTypingUsers(prev => {
+        const newSet = new Set(prev)
+        newSet.add(data.userName)
+        return newSet
+      })
+    })
+
+    channelRef.current.bind("user_stopped_typing", (data: { userId: string, userName: string }) => {
+      setTypingUsers(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(data.userName)
+        return newSet
+      })
+    })
+
     return () => {
       if (channelRef.current) {
         channelRef.current.unbind_all()
@@ -81,6 +102,42 @@ export function ChatInterface() {
       }
     }
   }, [socket, currentChannel, queryClient])
+
+  const emitTyping = useCallback(() => {
+    if (!socket || !session?.user) return
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+
+    // Emit typing event
+    fetch("/api/team-chat/typing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        channelId: currentChannel,
+        event: "typing",
+      }),
+    })
+
+    // Set timeout to emit stopped typing
+    typingTimeoutRef.current = setTimeout(() => {
+      fetch("/api/team-chat/typing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channelId: currentChannel,
+          event: "stopped_typing",
+        }),
+      })
+    }, 2000)
+  }, [socket, currentChannel, session?.user])
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value)
+    emitTyping()
+  }
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -93,6 +150,18 @@ export function ChatInterface() {
     if (message.trim()) {
       sendMessage(message)
       setMessage("")
+      // Clear typing indicator when sending message
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+        fetch("/api/team-chat/typing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channelId: currentChannel,
+            event: "stopped_typing",
+          }),
+        })
+      }
     }
   }
 
@@ -113,6 +182,21 @@ export function ChatInterface() {
               isLoading={isLoading}
             />
           </ScrollArea>
+          <div className="px-4 py-2 text-sm text-muted-foreground">
+            {typingUsers.size > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  <span className="w-1 h-1 bg-primary rounded-full animate-bounce" />
+                  <span className="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <span className="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
+                </div>
+                <span>
+                  {Array.from(typingUsers).join(", ")}
+                  {typingUsers.size === 1 ? " is" : " are"} typing...
+                </span>
+              </div>
+            )}
+          </div>
           <form
             onSubmit={handleSendMessage}
             className="p-4 border-t flex space-x-2"
@@ -127,7 +211,7 @@ export function ChatInterface() {
             </Button>
             <Input
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={handleMessageChange}
               placeholder="Type a message..."
               className="flex-1"
             />
