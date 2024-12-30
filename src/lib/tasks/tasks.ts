@@ -1,7 +1,7 @@
-import { db } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 import { Task } from "@prisma/client"
 
-export interface Task {
+export interface ITask {
   id: string
   title: string
   description: string
@@ -42,7 +42,7 @@ export async function filterTasks(filters: {
     }),
   }
 
-  return db.task.findMany({
+  return prisma.task.findMany({
     where,
     include: {
       assignee: true,
@@ -52,7 +52,7 @@ export async function filterTasks(filters: {
 }
 
 export async function getTask(id: string): Promise<Task | null> {
-  return db.task.findUnique({
+  return prisma.task.findUnique({
     where: { id },
     include: {
       assignee: true,
@@ -62,7 +62,7 @@ export async function getTask(id: string): Promise<Task | null> {
 }
 
 export async function getAllTasks(): Promise<Task[]> {
-  return db.task.findMany({
+  return prisma.task.findMany({
     include: {
       assignee: true,
       project: true,
@@ -71,7 +71,7 @@ export async function getAllTasks(): Promise<Task[]> {
 }
 
 export async function createTask(data: Partial<Task>): Promise<Task> {
-  return db.task.create({
+  return prisma.task.create({
     data: data as any,
     include: {
       assignee: true,
@@ -81,7 +81,7 @@ export async function createTask(data: Partial<Task>): Promise<Task> {
 }
 
 export async function updateTask(id: string, data: Partial<Task>): Promise<Task> {
-  return db.task.update({
+  return prisma.task.update({
     where: { id },
     data,
     include: {
@@ -92,7 +92,7 @@ export async function updateTask(id: string, data: Partial<Task>): Promise<Task>
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  await db.task.delete({
+  await prisma.task.delete({
     where: { id },
   })
 }
@@ -101,32 +101,15 @@ export async function updateTaskStatus(
   id: string,
   status: Task["status"]
 ): Promise<void> {
-  await db.task.update({
+  await prisma.task.update({
     where: { id },
     data: { status },
-  })
-}
-
-export async function updateTaskPriority(
-  id: string,
-  priority: Task["priority"]
-): Promise<void> {
-  await db.task.update({
-    where: { id },
-    data: { priority },
   })
 }
 
 export async function assignTask(
   taskId: string,
   assigneeId: string
-): Promise<void> {
-  // TODO: Implement actual database query
-}
-
-export async function updateTaskStatus(
-  taskId: string,
-  status: Task["status"]
 ): Promise<void> {
   // TODO: Implement actual database query
 }
